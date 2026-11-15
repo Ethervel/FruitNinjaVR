@@ -139,6 +139,57 @@ namespace FruitNinjaTools
             Debug.Log($"[Reorg] terminé : {done} déplacés, {skipped} déjà faits, {errors.Count} erreur(s)");
         }
 
+        const string MainScene = "Assets/Scenes/FruitNinjaVR_Main.unity";
+
+        // Noms explicites dans la scène principale et prefabs des sabres
+        // (les sabres étaient des instances du modèle Katana.fbx modifiées dans la scène).
+        [MenuItem("Tools/Fruit Ninja/Prefabs des sabres et noms de scène (Task 2)")]
+        public static void OrganizeSceneObjects()
+        {
+            var scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(MainScene);
+            var renames = new (string path, string name)[]
+            {
+                ("XRRig/Left Controller/Katana", "Katana_Left"),
+                ("XRRig/Right Controller/Katana", "Katana_Right"),
+                ("BombPrefab", "Bomb_Test"),
+                ("touchtester", "Debug_BombTester"),
+                ("Dojo/dojo mockup", "Dojo_A"),
+                ("Dojo/dojo mockup (1)", "Dojo_B"),
+                ("EclipseQuad", "FX_BombFlashQuad"),
+            };
+            foreach (var (path, name) in renames)
+            {
+                var go = FindInScene(scene, path);
+                if (go == null) { Debug.LogWarning($"[Reorg] introuvable dans la scène : {path}"); continue; }
+                go.name = name;
+                Debug.Log($"[Reorg] objet renommé : {path} -> {name}");
+            }
+
+            EnsureFolder("Assets/Prefabs/Katanas");
+            foreach (var side in new[] { "Left", "Right" })
+            {
+                var katana = FindInScene(scene, $"XRRig/{side} Controller/Katana_{side}");
+                string prefabPath = $"Assets/Prefabs/Katanas/Katana_{side}.prefab";
+                if (katana == null || AssetExists(prefabPath)) continue;
+                PrefabUtility.SaveAsPrefabAssetAndConnect(katana, prefabPath, InteractionMode.AutomatedAction, out bool ok);
+                Debug.Log($"[Reorg] prefab {(ok ? "créé" : "ÉCHEC")} : {prefabPath}");
+            }
+
+            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(scene);
+            UnityEditor.SceneManagement.EditorSceneManager.SaveScene(scene);
+            AssetDatabase.SaveAssets();
+        }
+
+        static GameObject FindInScene(UnityEngine.SceneManagement.Scene scene, string path)
+        {
+            string[] parts = path.Split('/');
+            var root = scene.GetRootGameObjects().FirstOrDefault(g => g.name == parts[0]);
+            if (root == null) return null;
+            var t = root.transform;
+            for (int i = 1; i < parts.Length && t != null; i++) t = t.Find(parts[i]);
+            return t != null ? t.gameObject : null;
+        }
+
         static bool AssetExists(string path) =>
             AssetDatabase.IsValidFolder(path) || !string.IsNullOrEmpty(AssetDatabase.AssetPathToGUID(path, AssetPathToGUIDOptions.OnlyExistingAssets));
 
