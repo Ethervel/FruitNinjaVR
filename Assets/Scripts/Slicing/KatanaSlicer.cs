@@ -163,8 +163,15 @@ public class KatanaSlicer : MonoBehaviour
         {
             Vector3 slicePoint = GetSlicePoint(fruit);
             Vector3 sliceNormal = CalculateSliceNormal(averageVelocity);
+            FruitController fruitController = fruit.GetComponentInParent<FruitController>();
             
             slicer.Slice(fruit, slicePoint, sliceNormal);
+
+            // Effet de jus au point de contact (Part 1, Task 3)
+            if (GameFX.Instance != null)
+            {
+                GameFX.Instance.PlayFruitJuice(slicePoint, fruitController != null ? fruitController.juiceColor : Color.yellow);
+            }
             Debug.Log($"✅ Sliced {fruit.name} | Speed: {speed:F2}");
             
             // AJOUT: Marquer le fruit comme déjà coupé

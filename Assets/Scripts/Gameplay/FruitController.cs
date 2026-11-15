@@ -5,6 +5,8 @@ public class FruitController : MonoBehaviour
     [Header("Fruit Settings")]
     public int pointsValue = 10;
     public bool isSpecial = false;
+    [Tooltip("Couleur de l'éclaboussure de jus (Part 1, Task 3).")]
+    public Color juiceColor = new Color(1f, 0.85f, 0.3f);
 
     private bool wasSliced = false;
 

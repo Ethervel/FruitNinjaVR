@@ -77,6 +77,13 @@ public class BombController : MonoBehaviour
         
         if (debugLogs) Debug.Log($"[Bomb] Touch {hitCount}/{touchesToExplode}", this);
 
+        // Feedback visuel de la pénalité (Part 1, Task 3) : petite explosion à chaque touche,
+        // explosion complète au moment où la bombe explose.
+        if (hitCount < touchesToExplode && GameFX.Instance != null)
+        {
+            GameFX.Instance.PlayBombExplosion(transform.position, GameFX.Instance.bombTouchScale);
+        }
+
         if (hitCount >= touchesToExplode)
         {
             FreezePhysicsOnExplode();
@@ -144,6 +151,8 @@ public class BombController : MonoBehaviour
     // -------------------- FLASH BLANC --------------------
     private IEnumerator FlashCoroutineFinal()
     {
+        if (GameFX.Instance != null) GameFX.Instance.PlayBombExplosion(transform.position);
+
         // Son d'explosion
         if (AudioManager.Instance != null)
         {

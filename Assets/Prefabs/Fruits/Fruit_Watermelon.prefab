@@ -165,3 +165,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   pointsValue: 10
   isSpecial: 0
+  juiceColor: {r: 1, g: 0.2, b: 0.3, a: 1}

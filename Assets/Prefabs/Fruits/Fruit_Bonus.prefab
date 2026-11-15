@@ -76,6 +76,14 @@ PrefabInstance:
       propertyPath: pointsValue
       value: 50
       objectReference: {fileID: 0}
+    - target: {fileID: 5838855294507821694, guid: b0bc22f194ddd514eb7d2aa755b03a1a, type: 3}
+      propertyPath: juiceColor.b
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 5838855294507821694, guid: b0bc22f194ddd514eb7d2aa755b03a1a, type: 3}
+      propertyPath: juiceColor.g
+      value: 0.82
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
