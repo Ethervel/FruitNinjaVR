@@ -36,7 +36,7 @@ namespace FruitNinjaTools
         public static void Run()
         {
             EnsureFolder(PrefabDir); EnsureFolder(MatDir);
-            Texture2D tex = AssetDatabase.GetBuiltinExtraResource<Texture2D>("Default-Particle.psd");
+            Texture2D tex = SoftDotTexture();
 
             // Matériaux : PCVR = shaders URP Particles avec soft particles ; Quest = Unlit sans soft particles.
             var juicePC = Mat("FX_Juice_PCVR", "Universal Render Pipeline/Particles/Lit", Blend.Alpha, true, tex);
@@ -44,6 +44,8 @@ namespace FruitNinjaTools
             var smokePC = Mat("FX_Smoke_PCVR", "Universal Render Pipeline/Particles/Lit", Blend.Alpha, true, tex);
             var juiceQ = Mat("FX_Juice_Quest", "Universal Render Pipeline/Particles/Unlit", Blend.Alpha, false, tex);
             var fireQ = Mat("FX_Fire_Quest", "Universal Render Pipeline/Particles/Unlit", Blend.Additive, false, tex);
+            // Sans HDR ni bloom (Quest), un feu additif se perd sur le décor clair : boule de feu en alpha blend.
+            var fireballQ = Mat("FX_Fireball_Quest", "Universal Render Pipeline/Particles/Unlit", Blend.Alpha, false, tex);
 
             var fade = Fade(Color.white, Color.white);
             var fire = new Gradient();
@@ -63,7 +65,7 @@ namespace FruitNinjaTools
             });
             Build("FX_FruitJuice_Quest", new List<Spec>
             {
-                new Spec { name = "Droplets", burst = 20, maxParticles = 24, lifetime = V(0.3f, 0.5f), speed = V(1.5f, 3f), size = V(0.025f, 0.05f),
+                new Spec { name = "Droplets", burst = 20, maxParticles = 24, lifetime = V(0.3f, 0.5f), speed = V(1.2f, 2.5f), size = V(0.035f, 0.06f),
                            gravity = 1f, colorOverLifetime = fade, material = juiceQ },
             });
 
@@ -83,9 +85,9 @@ namespace FruitNinjaTools
             {
                 new Spec { name = "Flash", burst = 1, maxParticles = 1, lifetime = V(0.12f, 0.12f), speed = V(0f, 0f), size = V(1.2f, 1.2f),
                            color = new Color(1f, 0.9f, 0.6f), colorOverLifetime = fade, shapeRadius = 0.01f, material = fireQ },
-                new Spec { name = "Fireball", burst = 16, maxParticles = 20, lifetime = V(0.4f, 0.6f), speed = V(1f, 2.5f), size = V(0.3f, 0.6f),
-                           colorOverLifetime = fire, sizeOverLifetime = grow, shapeRadius = 0.1f, material = fireQ },
-                new Spec { name = "Sparks", burst = 24, maxParticles = 30, lifetime = V(0.3f, 0.6f), speed = V(4f, 7f), size = V(0.03f, 0.05f),
+                new Spec { name = "Fireball", burst = 16, maxParticles = 20, lifetime = V(0.5f, 0.7f), speed = V(0.6f, 1.6f), size = V(0.4f, 0.75f),
+                           colorOverLifetime = fire, sizeOverLifetime = grow, randomRotation = true, shapeRadius = 0.1f, material = fireballQ },
+                new Spec { name = "Sparks", burst = 24, maxParticles = 30, lifetime = V(0.3f, 0.6f), speed = V(3f, 6f), size = V(0.05f, 0.08f),
                            gravity = 0.6f, color = new Color(1f, 0.75f, 0.3f), colorOverLifetime = fade, material = fireQ },
             });
 
@@ -93,6 +95,33 @@ namespace FruitNinjaTools
             SetJuiceColors();
             WireScene();
             Debug.Log("[FX] effets générés et branchés");
+        }
+
+        // Disque blanc à bord doux (alpha radial), 64 px : commun aux deux plateformes, très léger.
+        static Texture2D SoftDotTexture()
+        {
+            const string path = "Assets/FX/Textures/FX_SoftDot.png";
+            if (!System.IO.File.Exists(path))
+            {
+                EnsureFolder("Assets/FX/Textures");
+                var t = new Texture2D(64, 64, TextureFormat.RGBA32, false);
+                for (int y = 0; y < 64; y++)
+                    for (int x = 0; x < 64; x++)
+                    {
+                        float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(32f, 32f)) / 32f;
+                        float a = Mathf.Clamp01(1f - d);
+                        t.SetPixel(x, y, new Color(1f, 1f, 1f, a * a * (3f - 2f * a)));
+                    }
+                System.IO.File.WriteAllBytes(path, t.EncodeToPNG());
+                Object.DestroyImmediate(t);
+                AssetDatabase.ImportAsset(path);
+                var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+                importer.alphaIsTransparency = true;
+                importer.mipmapEnabled = true;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.SaveAndReimport();
+            }
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
         static Vector2 V(float a, float b) => new Vector2(a, b);

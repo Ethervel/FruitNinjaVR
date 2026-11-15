@@ -1,0 +1,5 @@
+effet;variante;qualité;particules à t;particules max (somme maxParticles);sous-systèmes;collision;noise;soft particles
+FruitJuice;PCVR;PC;85;110;2;True;False;True
+FruitJuice;Quest;Mobile;20;24;1;False;False;False
+BombExplosion;PCVR;PC;185;221;4;True;True;True
+BombExplosion;Quest;Mobile;40;51;3;False;False;False
