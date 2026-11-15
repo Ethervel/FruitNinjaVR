@@ -124,14 +124,9 @@ public class KatanaSlicer : MonoBehaviour
             BombController bomb = bombObject.GetComponent<BombController>();
             if (bomb != null)
             {
+                // OnTouch joue déjà le son de touche (évite le son en double).
                 bomb.OnTouch();
                 Debug.Log($"💣 Katana touched bomb! Speed: {speed:F2}");
-                
-                // Son de touche de bombe
-                if (AudioManager.Instance != null)
-                {
-                    AudioManager.Instance.PlayBombTouch();
-                }
             }
         }
         else
