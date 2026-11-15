@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Linq;
+using UnityEngine.InputSystem;
 
 public class BombController : MonoBehaviour
 {
@@ -49,7 +50,7 @@ public class BombController : MonoBehaviour
     void Update()
     {
         // DEBUG (facultatif) : espace = toucher
-        if (Input.GetKeyDown(KeyCode.Space)) OnTouch();
+        if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame) OnTouch();
     }
 
     public void OnTouch()

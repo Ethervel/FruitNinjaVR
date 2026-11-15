@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -45,7 +46,7 @@ public class Slicer : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetMouseButtonDown(0))
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
         {
             SliceAtMousePosition();
         }
@@ -75,7 +76,7 @@ public class Slicer : MonoBehaviour
 
     private void SliceAtMousePosition()
     {
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
         if (!Physics.Raycast(ray, out RaycastHit hit)) return;
 
         if (hit.collider.GetComponent<MeshFilter>() == null && hit.collider.transform.childCount == 0)
