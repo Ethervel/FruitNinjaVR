@@ -13,6 +13,12 @@ public class FruitSpawner : MonoBehaviour
     public float bombSpawnChance = 0.1f;
     public int bombPrefabIndex = 8;
 
+    [Header("Bonus Settings")]
+    [Tooltip("Fruit bonus (Part 1) : rare, rapporte plus de points.")]
+    public GameObject bonusFruitPrefab;
+    [Range(0f, 1f)]
+    public float bonusSpawnChance = 0.07f;
+
     [Header("Spawn Settings")]
     public float minSpawnInterval = 0.5f;
     public float maxSpawnInterval = 1.5f;
@@ -290,10 +296,11 @@ public class FruitSpawner : MonoBehaviour
             Debug.Log("💣 Spawning a BOMB!");
             return fruitPrefabs[bombPrefabIndex];
         }
-        else
+        if (bonusFruitPrefab != null && Random.value < bonusSpawnChance)
         {
-            return GetRandomFruit();
+            return bonusFruitPrefab;
         }
+        return GetRandomFruit();
     }
 
     private bool ShouldSpawnBomb()

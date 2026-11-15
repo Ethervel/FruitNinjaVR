@@ -147,7 +147,11 @@ public class GameManager : MonoBehaviour
         }
         lastFruitTime = t;
 
-        AddScore(pointsPerFruit);
+        // Fruit bonus (Part 1) : ses points remplacent ceux d'un fruit normal.
+        FruitController fc = fruit != null ? fruit.GetComponentInParent<FruitController>() : null;
+        bool isBonus = fc != null && fc.isSpecial;
+        AddScore(isBonus ? fc.pointsValue : pointsPerFruit);
+        if (isBonus && AudioManager.Instance != null) AudioManager.Instance.PlayScoreBonus();
         ui?.UpdateCombo(consecutiveFruits);
     }
 

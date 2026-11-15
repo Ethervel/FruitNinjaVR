@@ -1992,6 +1992,8 @@ MonoBehaviour:
   - {fileID: 1840606786}
   bombSpawnChance: 0.178
   bombPrefabIndex: 8
+  bonusFruitPrefab: {fileID: 6544393397204042926, guid: 9efa05ea938cbcb49908c77608e796b3, type: 3}
+  bonusSpawnChance: 0.07
   minSpawnInterval: 0.5
   maxSpawnInterval: 5
   minForce: 2
