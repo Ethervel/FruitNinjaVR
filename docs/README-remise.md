@@ -65,6 +65,8 @@ remise (voir `docs/etat-initial.md`).
 - `docs/builds.md` : configuration des builds Windows et Quest, sources des valeurs Android.
 - `docs/analyse-apk.md` : contenu et taille de l'APK, comparaison avec le build Windows.
 - `docs/checklist-casque.md` : procédure et grille de test au casque.
+- `docs/captures/apk-analyzer/` : captures de l'APK Analyzer d'Android Studio.
+- `docs/rapport/rapport.tex` / `rapport.pdf` : rapport de la Part 1 (premier jet, tests au casque à compléter).
 
 ## Modifications de la Part 1 par rapport à S7
 

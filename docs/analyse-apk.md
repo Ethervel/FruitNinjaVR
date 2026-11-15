@@ -8,12 +8,18 @@ sous le nom « Mo »).
 
 | Fichier | Octets | Mo | Mio |
 |---|---:|---:|---:|
-| APK Quest `Builds/Quest/FruitNinjaVR_Quest.apk` | 54 978 059 | 54,98 | 52,43 |
-| Taille de téléchargement estimée de l'APK (`apkanalyzer apk download-size`) | 49 709 272 | 49,71 | 47,41 |
+| APK Quest `Builds/Quest/FruitNinjaVR_Quest.apk` (APK Analyzer : « APK size: 52.4 MB ») | 54 978 059 | 54,98 | 52,43 |
+| Taille de téléchargement estimée (APK Analyzer : « Download Size: 47.4 MB » ; `apkanalyzer apk download-size`) | 49 709 272 | 49,71 | 47,41 |
 | Contenu de l'APK une fois décompressé (somme des 538 entrées) | 149 395 739 | 149,40 | 142,47 |
 | ZIP Windows `Builds/FruitNinjaVR_Windows.zip` | 71 893 731 | 71,89 | 68,56 |
 | Dossier Windows livré (sans `*_BurstDebugInformation_DoNotShip`) | 152 831 671 | 152,83 | 145,75 |
 | Dossier Windows complet produit par Unity | 153 130 213 | 153,13 | 146,04 |
+
+**APK Analyzer d'Android Studio** (Android Studio 2026.2.2, *Build > Analyze APK…*) affiche
+**APK size: 52.4 MB, Download Size: 47.4 MB**. Ses « MB » sont des Mio (2²⁰ o) : 52,4 Mio = 54,98 Mo,
+47,4 Mio = 49,71 Mo, ce qui correspond exactement aux valeurs ci-dessus. Sa colonne *Size* donne la taille de
+chaque entrée **dans l'archive** (compressée), *Download Size* la taille estimée une fois recompressée pour
+le téléchargement depuis un store.
 
 Le dossier `FruitNinjaVR_BurstDebugInformation_DoNotShip` (298 542 o) contient des symboles de débogage
 qu'Unity demande de ne pas distribuer : il est exclu du ZIP.
@@ -79,10 +85,10 @@ Le « Complete build size » de 775,6 Mo affiché par Unity pour Android compte 
 
 ## 4. Limites de l'analyse
 
-- **Android Studio n'est pas installé** sur le poste : les captures d'écran de l'**APK Analyzer** demandées par
-  le sujet restent à faire. Android Studio est disponible par `winget install Google.AndroidStudio`
-  (version 2026.2.2.8), mais l'installation demande d'accepter la licence et une élévation administrateur :
-  à faire par l'utilisateur, puis *Build > Analyze APK…* sur `Builds/Quest/FruitNinjaVR_Quest.apk`.
+- APK Analyzer signale « **Does not support 16 KB devices** » : `libUnityOpenXR.so` et `libopenxr_loader.so`
+  (plug-in OpenXR d'Unity et loader Khronos) sont alignés sur des pages de 4 Ko et non de 16 Ko. Cela concerne
+  les appareils Android configurés en pages de 16 Ko ; ces deux bibliothèques viennent des paquets et ne
+  sont pas modifiables dans le projet. Sans effet constaté à ce jour (APK pas encore testé dans le casque).
 - APK Analyzer (comme cet inventaire) voit **les fichiers de l'archive, pas les assets Unity** : textures,
   meshes et sons sont regroupés dans `sharedassets0.assets` (découpé en `.splitN`) et `sharedassets0.resource`.
   La répartition par type d'asset vient du rapport de build d'Unity (Editor.log), pas de l'APK.
@@ -90,7 +96,19 @@ Le « Complete build size » de 775,6 Mo affiché par Unity pour Android compte 
 - La taille de téléchargement est une estimation de l'outil ; la taille installée sur le casque n'a pas été
   mesurée.
 
-## 5. Lien avec les tests (Task 4)
+## 5. Captures de l'APK Analyzer
+
+Android Studio 2026.2.2 (installé par `winget install Google.AndroidStudio`), APK ouvert dans l'APK
+Analyzer, tri par « % of Download Size » :
+
+| Capture | Contenu |
+|---|---|
+| ![](captures/apk-analyzer/01-vue-ensemble.png) | vue d'ensemble : APK size 52.4 MB, Download Size 47.4 MB ; `lib` 53,8 %, `assets` 41,1 %, `classes.dex` 4,6 % du téléchargement |
+| ![](captures/apk-analyzer/02-assets-bin-data.png) | `assets/bin/Data` déplié : morceaux `sharedassets0.assets.splitN` (données de la scène), `globalgamemanagers.assets.splitN`, `sharedassets0.resource` (audio, non compressé) |
+| ![](captures/apk-analyzer/03-lib-arm64-v8a.png) | `lib/arm64-v8a` : `libil2cpp.so` 15.4 MB (32 % du téléchargement), `libunity.so` 9.1 MB (18,8 %), avertissements d'alignement 16 Ko sur les bibliothèques OpenXR |
+| ![](captures/apk-analyzer/04-plus-gros-fichiers-donnees.png) | plus gros fichier de données Unity : `Managed/Metadata/global-metadata.dat` (2.5 MB dans l'APK, 5,2 %) ; `sharedassets0.assets` est plus gros au total (12,7 Mo compressés) mais découpé par Unity en 26 morceaux de moins de 1 Mo |
+
+## 6. Lien avec les tests (Task 4)
 
 À compléter après les tests au casque (`docs/checklist-casque.md`) : qualité des effets, lisibilité,
 fluidité (FPS avec OVR Metrics Tool) et limitations observées sur chaque plateforme. Choix déjà faits pour
