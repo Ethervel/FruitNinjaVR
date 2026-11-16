@@ -52,11 +52,6 @@
   {\small Unity 6000.0.56f1 -- URP 17.0.4 -- OpenXR 1.15.1 -- XR Interaction Toolkit 3.0.8}
 \end{center}
 
-\begin{afaire}[Version de travail -- test PC à compléter]
-Le build Quest a été testé dans le casque (Meta Quest 3, en autonome ; section~\ref{sec:tests}). Le build
-PC (Meta Quest Link) n'a pas encore été testé : sa colonne de la grille et ses FPS restent vides. Les
-captures d'effets de la section~\ref{sec:fx} sont des rendus de l'éditeur.
-\end{afaire}
 
 \tableofcontents
 
@@ -289,11 +284,16 @@ Android (SSAO), qui est un faux positif : le SSAO n'existe que dans le renderer 
 \item PC : Windows 11, Intel i9-14900KF, NVIDIA RTX 3080, 32 Go de RAM.
 \item Casque : Meta Quest 3, Meta Horizon OS v205 (Android 14, API 34, build \texttt{UP1A.231005.007.A1},
   correctif de sécurité du 01/06/2026), écran 4128\,$\times$\,2208 (deux yeux), 72~Hz pendant le test.
-\item PCVR : Meta Horizon Link installé sur le PC, service \texttt{OVRService} actif, runtime OpenXR actif
-  = Meta (\texttt{oculus\_openxr\_64.json}). % TODO : version de Link, câble ou Air Link.
+\item PCVR : Meta Horizon Link, runtime \texttt{OVRServer} 1.208.0 (relevé dans le journal du service ;
+  installation initiale 1.115.0), casque relié par câble USB-C, runtime OpenXR actif = Meta
+  (\texttt{oculus\_openxr\_64.json}).
 \item Mesure des FPS sur le Quest : statistiques du compositeur Meta (lignes \texttt{VrApi} du journal
   \texttt{adb logcat}, une ligne par seconde : images affichées, temps GPU de l'application, charge CPU/GPU,
   température). OVR Metrics Tool n'était pas installé et n'a pas été nécessaire.
+\item Mesure des FPS sur le PC : HUD de performance de Link (\emph{Performance Summary}, activé par
+  \texttt{OculusDebugToolCLI}, \texttt{perfhud set-mode 1}), enregistré par une capture de la fenêtre
+  Oculus Mirror toutes les 2~s. On y lit la fréquence de l'application, la marge de performance et les
+  compteurs cumulés d'images perdues.
 \end{itemize}
 
 \subsection{Résultats des tests}
@@ -310,35 +310,42 @@ Android (SSAO), qui est un faux positif : le SSAO n'existe que dans le renderer 
   85~s). Le tampon du journal a été agrandi au préalable (\texttt{adb logcat -G 16M}), puis lu après la
   session en rebranchant le câble. Le joueur a pris les captures lui-même (bouton Meta + gâchette).
 \end{itemize}
-La grille reprend le retour du joueur (« tout OK ») sur les deux sessions. Les points vérifiés aussi
-dans le journal de la session 2 sont signalés par (j). Le journal filtré est versionné dans
-\fichier{docs/tests/quest-logcat.txt}.
+\paragraph{Déroulement (PC).} Le build Windows a été lancé sur le PC, le casque étant relié par Link
+(câble), en deux exécutions : une partie Normal complète (fin par perte des 3 vies), puis une partie
+Extrême (fin à la première bombe touchée). Le \fichier{Player.log} des deux exécutions est versionné
+dans \fichier{docs/tests/pcvr-player-log.txt}. Les captures viennent de la fenêtre miroir du jeu,
+c'est-à-dire de la vue d'un œil rendue par Unity.
+
+La grille reprend le retour du joueur (« tout OK » sur chaque build), qui est déclaratif. Les points
+vérifiés aussi dans les journaux (Quest : session 2 ; PC : \fichier{Player.log}) sont signalés par (j).
+Le journal filtré du Quest est versionné dans \fichier{docs/tests/quest-logcat.txt}.
 
 \begin{table}[H]
 \centering\small
-\caption{Parcours de test (OK / KO et remarques). (j) : confirmé aussi par le journal du Quest.}
+\caption{Parcours de test. OK : retour du joueur ; (j) : confirmé aussi par le journal ; * : voir la
+remarque sous le tableau.}
 \begin{tabularx}{\textwidth}{@{}r P{2.6cm} L P{1.9cm} P{2.3cm}@{}}
 \toprule
 \# & Élément & Vérification & PCVR & Quest \\
 \midrule
-1 & Chargement & démarrage sans écran noir ni crash ; temps de chargement & & OK (j) \\
-2 & Tracking casque & la vue suit la tête ; hauteur des yeux, sol & & OK \\
-3 & Tracking manettes & deux manettes suivies sans retard ni décalage & & OK \\
-4 & Sabres & un katana dans chaque main, bien orienté & & OK \\
-5 & Menu & rayon de la manette droite ; gâchette : Start, difficulté, Retour & & OK \\
-6 & Lancement & fruits lancés depuis les 4 points, atteignables & & OK \\
-7 & Coupe & geste rapide : fruit coupé, son, +10 points & & OK (j) \\
-8 & Effet jus & éclaboussure au point de coupe, couleur du fruit & & OK \\
-9 & Combo & 3 fruits en moins de 2 s : +50, texte « Combo » & & OK \\
-10 & Fruit bonus & pomme dorée : +50 points & & OK (vue) \\
-11 & Bombe touchée & son, $-25$ points, $-1$ vie, petite explosion & & OK (j) \\
-12 & Explosion & 3\textsuperscript{e} touche : tremblement, explosion, flash, son & & OK \\
-13 & Fin de partie & score, meilleur score, fruits, bombes ; Rejouer, Menu & & OK (j) \\
-14 & Difficultés & Facile et Extrême changent vies, cadence, bombes & & OK \\
-15 & Lisibilité & UI lisible, effets visibles sans gêner & & OK \\
-16 & Fluidité & pas de saccade lors des coupes et explosions & & OK \\
-17 & FPS & moyenne / minimum (voir tableau suivant) & & 72,5 / 71 (Normal) \\
-18 & Stabilité & 2 parties complètes sans crash ni blocage & & OK \\
+1 & Chargement & démarrage sans écran noir ni crash ; temps de chargement & OK (j) & OK (j) \\
+2 & Tracking casque & la vue suit la tête ; hauteur des yeux, sol & OK & OK \\
+3 & Tracking manettes & deux manettes suivies sans retard ni décalage & OK & OK \\
+4 & Sabres & un katana dans chaque main, bien orienté & OK & OK \\
+5 & Menu & rayon de la manette droite ; gâchette : Start, difficulté, Retour & OK & OK \\
+6 & Lancement & fruits lancés depuis les 4 points, atteignables & OK & OK \\
+7 & Coupe & geste rapide : fruit coupé, son, +10 points & OK (j) & OK (j) \\
+8 & Effet jus & éclaboussure au point de coupe, couleur du fruit & OK & OK \\
+9 & Combo & 3 fruits en moins de 2 s : +50, texte « Combo » & OK & OK \\
+10 & Fruit bonus & pomme dorée : +50 points & OK & OK (vue) \\
+11 & Bombe touchée & son, $-25$ points, $-1$ vie, petite explosion & OK (j) & OK (j) \\
+12 & Explosion & 3\textsuperscript{e} touche : tremblement, explosion, flash, son & OK* & OK* \\
+13 & Fin de partie & score, meilleur score, fruits, bombes ; Rejouer, Menu & OK (j) & OK (j) \\
+14 & Difficultés & Facile et Extrême changent vies, cadence, bombes & OK & OK \\
+15 & Lisibilité & UI lisible, effets visibles sans gêner & OK & OK \\
+16 & Fluidité & pas de saccade lors des coupes et explosions & OK & OK \\
+17 & FPS & moyenne / minimum (voir tableau suivant) & 72 / 63 (HUD) & 72,5 / 71 (Normal) \\
+18 & Stabilité & 2 parties complètes sans crash ni blocage & OK (j) & OK \\
 19 & Autonomie & build Quest joué sans câble ni PC & -- & OK (j) \\
 \bottomrule
 \end{tabularx}
@@ -347,23 +354,37 @@ dans le journal de la session 2 sont signalés par (j). Le journal filtré est v
 Le journal de la session 2 confirme : la variante d'effets \texttt{[GameFX] variante utilisée : Quest
 (FX\_FruitJuice\_Quest, FX\_BombExplosion\_Quest)} ; une partie Normal à 3 vies (16 fruits coupés,
 3 touches de bombe, fin à 0 vie) ; aucune exception ni crash (le tampon \texttt{crash} du casque est vide),
-et une fermeture normale du processus. Une erreur répétée est relevée, sans effet visible :
-\texttt{Tag: Slice is not defined} (42 fois). Le script S7 \texttt{DestroyFloor} compare les morceaux
-tombés au sol à un tag \texttt{Slice} qui n'existe pas dans le projet ; l'objet est quand même détruit
-par la vérification de nom qui suit. Correction possible : ajouter le tag ou le retirer de la liste du
-composant. Le journal ne contient ni la partie Extrême ni l'explosion à 3 touches : ils ont été joués
-pendant la session 1, dont le journal est perdu.
+et une fermeture normale du processus. Côté PC, le \fichier{Player.log} confirme
+\texttt{[GameFX] variante utilisée : PCVR (FX\_FruitJuice\_PCVR, FX\_BombExplosion\_PCVR)}, une partie
+Normal (45 fruits coupés, 3 bombes, score 595), une partie Extrême (11 fruits, fin à la première bombe),
+aucune exception et un arrêt normal (\texttt{System Shutdown}).
+
+Les deux builds journalisaient une erreur répétée, sans effet visible : \texttt{Tag: Slice is not
+defined} (42 fois sur le Quest, 122 sur le PC). Le script S7 \texttt{DestroyFloor} testait les morceaux
+tombés au sol avec \texttt{CompareTag("Slice")}, un tag qui n'existe pas dans le projet ; l'objet était
+quand même détruit par la vérification de nom qui suit. Correction : comparaison directe
+\texttt{other.gameObject.tag == tag}, qui ne journalise rien. Les deux builds ont été refaits ensuite
+(section~\ref{sec:apk}).
+
+* Explosion à 3 touches : le joueur la déclare vue, mais aucun des journaux disponibles ne contient de
+3\textsuperscript{e} touche sur une même bombe (au plus \texttt{[Bomb] Touch 2/3}). Le journal de la
+session Quest 1 est perdu. En Extrême, la partie s'arrête dès la première touche (1 vie). En Normal,
+la 3\textsuperscript{e} touche coûte la dernière vie. L'explosion complète se teste donc le plus
+facilement en Facile (5 vies).
 
 \begin{table}[H]
 \centering\small
-\caption{Fluidité mesurée. Quest : lignes \texttt{VrApi} du compositeur, une par seconde, écran à 72~Hz,
-session 2 sans câble.}
+\caption{Fluidité mesurée, à 72~Hz sur les deux builds. Quest : lignes \texttt{VrApi} du compositeur,
+une par seconde, session 2 sans câble. PC : HUD de performance de Link, relevé toutes les 2~s.}
 \begin{tabularx}{\textwidth}{@{}P{2.4cm}P{2.6cm}P{1.5cm}P{1.6cm}L@{}}
 \toprule
 Build & Outil & FPS moyen & FPS minimum & Remarques (CPU/GPU, saccades) \\
 \midrule
-PCVR -- Normal & & & & \\
-PCVR -- Extrême & & & & \\
+PCVR -- Normal & HUD de Link (miroir) & 72,0 & 72 en jeu ; 63 au retour au menu & 38~s mesurées
+  (la fin de la partie) : 1 image perdue par l'application, courbe de fréquence plate à 72 ; marge de
+  performance de 77 à 84~\% ; latence mouvement-photon d'environ 43~ms ; 4 images perdues au passage
+  écran de fin $\to$ menu \\
+PCVR -- Extrême & idem & 72,0 & 72 & environ 40~s de partie : aucune image perdue ; marge de 71 à 85~\% \\
 Quest -- Normal & \texttt{adb logcat}, VrApi & 72,5 & 71 & 85~s ; aucune seconde sous 70 ; temps GPU de l'appli
   9,4~ms en moyenne (max 10,0) pour un budget de 13,9~ms ; GPU 81~\% (max 88~\%), CPU 23~\% ; 45~°C max \\
 Quest -- Menu & idem & 72,2 & 64 & 53~s ; une seule seconde sous 70 (64), juste après le chargement ; les
@@ -391,8 +412,20 @@ d'une seconde, n'ont pas pu être capturés avec la combinaison de boutons.}
 \label{fig:quest}
 \end{figure}
 
-% TODO test PC : remplir la colonne PCVR, les lignes PCVR du tableau des FPS (overlay de performance de
-% Link) et ajouter les captures du miroir (docs/captures/pcvr_<nom>.png).
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.49\textwidth]{pcvr/pcvr_menu.jpg}\hfill
+\includegraphics[width=0.49\textwidth]{pcvr/pcvr_jus_orange.jpg}\\[3pt]
+\includegraphics[width=0.49\textwidth]{pcvr/pcvr_jus_pasteque_bombe.jpg}\hfill
+\includegraphics[width=0.49\textwidth]{pcvr/pcvr_jus_pomme.jpg}\\[3pt]
+\includegraphics[width=0.49\textwidth]{pcvr/pcvr_fin.jpg}\hfill
+\includegraphics[width=0.49\textwidth]{pcvr/pcvr_hud_link.jpg}
+\caption{Build PC via Link (fenêtre miroir du jeu, vue d'un œil). De gauche à droite et de haut en bas :
+menu, jus d'orange au moment de la coupe, jus de pastèque près d'une bombe, jus de pomme (morceaux
+coupés), écran de fin (score 595, 45 fruits, 3 bombes) et HUD de performance de Link capturé dans
+Oculus Mirror (72~Hz, 79~\% de marge).}
+\label{fig:pcvr}
+\end{figure}
 
 % =====================================================================
 \section{Analyse de l'APK et comparaison des plateformes}
@@ -421,18 +454,23 @@ les données Unity (\texttt{assets}) 41,1\,\%.}
 \toprule
 Fichier & Octets & Mo & Mio \\
 \midrule
-APK Quest (taille brute) & 54\,978\,059 & 54,98 & 52,43 \\
+APK Quest (taille brute) & 54\,978\,539 & 54,98 & 52,43 \\
 APK Quest, taille de téléchargement estimée & 49\,709\,272 & 49,71 & 47,41 \\
-Contenu de l'APK décompressé (538 entrées) & 149\,395\,739 & 149,40 & 142,47 \\
-ZIP Windows (sans symboles de débogage) & 71\,893\,731 & 71,89 & 68,56 \\
+Contenu de l'APK décompressé (538 entrées) & 149\,395\,751 & 149,40 & 142,47 \\
+ZIP Windows (sans symboles de débogage) & 71\,696\,703 & 71,70 & 68,38 \\
 Dossier Windows livré & 152\,831\,671 & 152,83 & 145,75 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
+Les tailles du tableau sont celles des builds refaits après la correction de \texttt{DestroyFloor}
+(section~\ref{sec:tests}). Les captures de l'APK Analyzer et la taille de téléchargement viennent du
+build précédent : l'APK n'a pris que 480~octets (54\,978\,059 $\to$ 54\,978\,539), un écart
+négligeable qui ne change aucune valeur arrondie.
+
 Un APK est une archive ZIP. Il faut donc comparer l'APK au ZIP Windows (deux archives) et le contenu
 de l'APK au dossier Windows (deux contenus décompressés). L'APK compresse à 36,8\,\% et le ZIP
-Windows à 47,0\,\% : les textures PC (BC) sont déjà denses et le build Windows livre en plus
+Windows à 46,9\,\% : les textures PC (BC) sont déjà denses et le build Windows livre en plus
 \texttt{UnityPlayer.dll} et les assemblies .NET.
 
 \subsection{Contenu de l'APK}
@@ -539,9 +577,20 @@ moment mesuré : le passage serait possible, mais il faudrait le vérifier au ca
 la fréquence par défaut des applications.
 Le joueur n'a signalé ni saccade ni problème de lisibilité. La partie Extrême n'a pas été mesurée.
 
-\begin{afaire}[À compléter après le test PC]
-Comparaison avec le build PCVR (FPS de l'overlay de Link, rendu des effets avec HDR et post-process).
-\end{afaire}
+\paragraph{Comparaison PC / Quest.} Les deux builds tiennent 72~images/s en jeu. Les marges, en
+revanche, n'ont rien à voir. Sur le PC (RTX 3080), le HUD de Link indique 71 à 85~\% de marge de
+performance, et l'application n'a perdu qu'une image en 38~s de partie Normal, aucune en Extrême. La
+seule baisse (63~Hz) a lieu au retour au menu, hors du jeu. Sur le Quest, le GPU est occupé à 81~\% et
+la marge n'est que d'environ 28~\% du budget d'image. Les effets allégés de la variante Quest
+(4 à 4,6 fois moins de particules, sans collision) sont donc nécessaires : ce sont eux qui gardent cette
+marge, alors que le PC pourrait afficher la variante complète sans difficulté.
+
+Pour la qualité visuelle, les captures (figures~\ref{fig:quest} et~\ref{fig:pcvr}) montrent le même
+décor et la même UI. Le PC ajoute l'éclairage HDR, le post-process et des jus plus denses : gouttes
+étirées, éclats colorés bien visibles au moment de la coupe. Le Quest garde un rendu plus plat, mais
+reste lisible. Les textes de l'UI (score, minuteur, vies) sont petits sur les deux builds et sont lus
+sans difficulté au casque selon le joueur. La latence mouvement-photon de Link (environ 43~ms) est
+propre au streaming par câble ; elle n'existe pas en autonome.
 
 % =====================================================================
 \section{Difficultés, solutions et limitations}
@@ -564,13 +613,24 @@ Plateforme SDK 32 non installée (cible API 32) & cible « Automatic (highest in
 Explosion additive peu lisible sur Quest (sans HDR) & boule de feu en alpha blend, particules plus grosses \\
 Outil de pilotage de l'éditeur (MCP for Unity) utilisé pendant le développement & paquet isolé dans un commit séparé, pour être retiré proprement avant la remise \\
 \bottomrule
+Tests Quest : la liaison adb par USB tombait sans arrêt pendant que Meta Horizon Link était ouvert sur le PC & test Quest refait sans câble, journal lu ensuite en rebranchant \\
+Journal du casque écrasé en quelques minutes (tampon de 256~Kio) & \texttt{adb logcat -G 16M} avant la session \\
+\texttt{adb exec-out screencap} : images noires dans le jeu & captures natives d'Horizon OS (bouton Meta + gâchette), récupérées par \texttt{adb pull} \\
+FPS du build PC sans outil d'enregistrement & HUD de performance de Link activé par \texttt{OculusDebugToolCLI}, capturé toutes les 2~s dans Oculus Mirror \\
+Erreur \texttt{Tag: Slice is not defined} répétée dans les deux builds & \texttt{DestroyFloor} : \texttt{CompareTag} remplacé par une comparaison directe du tag ; builds refaits \\
+\bottomrule
 \end{tabularx}
 \end{table}
-% TODO : ajouter les difficultés rencontrées lors des tests au casque.
 
 \textbf{Limitations restantes}
 \begin{itemize}
-\item Tests au casque, FPS et captures dans le casque non faits à ce jour (section~\ref{sec:tests}).
+\item Le bouton Quitter du menu réagit au contact des katanas. Pendant le test PC, le jeu s'est fermé
+  après une partie, en revenant au menu (contacts \texttt{QuitButton} dans le journal). Un fruit tranché
+  près du menu ou un geste ample suffit à quitter par mégarde.
+\item Tests : la grille est déclarative (retour du joueur), complétée par les journaux. Les FPS du
+  Quest en Extrême n'ont pas été mesurés, et l'explosion à 3 touches n'apparaît dans aucun journal
+  conservé (section~\ref{sec:tests}). Les tests au casque ont été faits sur le build d'avant la
+  correction de \texttt{DestroyFloor} ; le nouvel APK a seulement été relancé sur le casque.
 \item Volume, mode entraînement, classement et sauvegarde JSON absents (hérités de S7).
 \item Rig S7 conservé (\texttt{TrackedPoseDriver} legacy, déprécié) plutôt qu'un XR Origin.
 \item Paramètres Android issus des recommandations de Meta, à confirmer avec ceux du cours.

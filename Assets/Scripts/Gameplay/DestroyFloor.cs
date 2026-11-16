@@ -9,7 +9,7 @@ public class DestroyFloor : MonoBehaviour
     {
         foreach (string tag in tagsToDestroy)
         {
-            if (other.CompareTag(tag))
+            if (other.gameObject.tag == tag) // CompareTag journalise une erreur si le tag n'existe pas (ex. « Slice » de la scène)
             {
                 Destroy(other.gameObject);
                 return;

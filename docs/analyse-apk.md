@@ -8,12 +8,16 @@ sous le nom « Mo »).
 
 | Fichier | Octets | Mo | Mio |
 |---|---:|---:|---:|
-| APK Quest `Builds/Quest/FruitNinjaVR_Quest.apk` (APK Analyzer : « APK size: 52.4 MB ») | 54 978 059 | 54,98 | 52,43 |
+| APK Quest `Builds/Quest/FruitNinjaVR_Quest.apk` (APK Analyzer : « APK size: 52.4 MB ») | 54 978 539 | 54,98 | 52,43 |
 | Taille de téléchargement estimée (APK Analyzer : « Download Size: 47.4 MB » ; `apkanalyzer apk download-size`) | 49 709 272 | 49,71 | 47,41 |
-| Contenu de l'APK une fois décompressé (somme des 538 entrées) | 149 395 739 | 149,40 | 142,47 |
-| ZIP Windows `Builds/FruitNinjaVR_Windows.zip` | 71 893 731 | 71,89 | 68,56 |
+| Contenu de l'APK une fois décompressé (somme des 538 entrées) | 149 395 751 | 149,40 | 142,47 |
+| ZIP Windows `Builds/FruitNinjaVR_Windows.zip` | 71 696 703 | 71,70 | 68,38 |
 | Dossier Windows livré (sans `*_BurstDebugInformation_DoNotShip`) | 152 831 671 | 152,83 | 145,75 |
 | Dossier Windows complet produit par Unity | 153 130 213 | 153,13 | 146,04 |
+
+Ces tailles sont celles des builds refaits le 16/11/2026, après la correction de `DestroyFloor`. Les
+captures de l'APK Analyzer et la taille de téléchargement datent du build du 15/11 (54 978 059 o).
+L'écart de +480 o est négligeable et ne change aucune valeur arrondie.
 
 **APK Analyzer d'Android Studio** (Android Studio 2026.2.2, *Build > Analyze APK…*) affiche
 **APK size: 52.4 MB, Download Size: 47.4 MB**. Ses « MB » sont des Mio (2²⁰ o) : 52,4 Mio = 54,98 Mo,
@@ -25,7 +29,7 @@ Le dossier `FruitNinjaVR_BurstDebugInformation_DoNotShip` (298 542 o) contient d
 qu'Unity demande de ne pas distribuer : il est exclu du ZIP.
 
 **Compression.** Un APK est une archive ZIP : l'APK (55,0 Mo) contient 149,4 Mo de données, soit un taux de
-36,8 %. Le ZIP Windows réduit le dossier de 152,8 Mo à 71,9 Mo (47,0 %). Il faut donc comparer
+36,8 %. Le ZIP Windows réduit le dossier de 152,8 Mo à 71,7 Mo (46,9 %). Il faut donc comparer
 *APK ↔ ZIP* (deux archives) et *contenu de l'APK ↔ dossier Windows* (deux contenus décompressés), pas
 l'APK au dossier. Le Windows compresse moins bien parce que ses textures sont en formats GPU PC (BC) déjà
 denses, et que `UnityPlayer.dll` et les assemblies .NET sont livrés en plus.

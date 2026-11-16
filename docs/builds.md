@@ -104,4 +104,8 @@ Procédure et grille : `docs/checklist-casque.md`. Log du test Quest : `docs/tes
 - **Quest (16/11/2026)** : testé dans le casque, y compris en autonome sans câble. Grille OK ; partie
   Normal à 72,5 FPS en moyenne et 71 au minimum (écran à 72 Hz) ; variante d'effets Quest confirmée ;
   aucune exception ni crash.
-- **PC (Meta Quest Link)** : pas encore testé.
+- **PC (Meta Horizon Link, runtime 1.208.0, câble)** : testé, grille OK. Avec le HUD de performance de
+  Link, l'appli reste à 72 Hz en jeu : 1 image perdue en 38 s en Normal, aucune en Extrême, marge de
+  71 à 85 %. Un creux à 63 Hz au retour au menu. Variante d'effets PCVR confirmée dans `Player.log`.
+- **Après les tests** : correction de `DestroyFloor` (erreur `Tag: Slice is not defined`), puis les deux
+  builds ont été refaits. Le nouvel APK a été réinstallé et relancé sur le casque.
