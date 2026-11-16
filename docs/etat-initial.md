@@ -2,7 +2,8 @@
 
 Projet : Junghoon KIM (groupe d'une personne). Dépôt S7 repris : `LaelKim/Fruit_Ninja`, branche `main`,
 commit `2db0f77` (26/10/2025). Copie du projet initial : **tag git `s7-initial`** sur ce commit.
-Travail de la Part 1 : branche `part1`.
+Travail de la Part 1 : branche `part1`. Dépôt de remise : https://github.com/Ethervel/FruitNinjaVR
+(branche `main` = version S7 d'origine, tag `s7-initial` ; branche `part1`, tag `part1-remise`).
 
 Méthode : ouverture du projet avec sa version d'Unity, lecture du code et des scènes, audit automatique
 (`Tools > Fruit Ninja > Audit du projet`, script `Assets/Editor/FruitNinjaTools/ProjectAudit.cs`,

@@ -3,7 +3,9 @@
 Membre : **Junghoon KIM** (groupe d'une personne). Projet repris du mini-projet S7 (ST2OOS 2025-2026) :
 mini-jeu VR inspiré de Fruit Ninja, où le joueur tranche des fruits avec deux katanas.
 
-Remise : branche `part1`, tag `part1-remise`. Rapport : `docs/rapport/rapport.pdf`.
+Dépôt : https://github.com/Ethervel/FruitNinjaVR. Remise : branche `part1`, tag `part1-remise`.
+Rapport : `docs/rapport/rapport.pdf`. La version S7 d'origine, reprise du dépôt `LaelKim/Fruit_Ninja`, se
+trouve sur la branche `main` (tag `s7-initial`).
 
 ## Ouvrir le projet
 
