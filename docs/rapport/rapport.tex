@@ -46,8 +46,7 @@
   {\LARGE\bfseries Fruit Ninja VR -- Part 1}\\[4pt]
   {\Large Reprise et déploiement multiplateforme}\\[10pt]
   ST2VAAS 2026-2027 \quad--\quad Junghoon KIM (groupe d'une personne)\\[4pt]
-  Projet : \url{https://github.com/LaelKim/Fruit_Ninja}, branche \texttt{part1}
-  % TODO remise : confirmer la branche (ou le tag) remis
+  Projet : \url{https://github.com/LaelKim/Fruit_Ninja}, branche \texttt{part1}, tag \texttt{part1-remise}
   \\[2pt]
   {\small Unity 6000.0.56f1 -- URP 17.0.4 -- OpenXR 1.15.1 -- XR Interaction Toolkit 3.0.8}
 \end{center}
@@ -339,7 +338,7 @@ remarque sous le tableau.}
 9 & Combo & 3 fruits en moins de 2 s : +50, texte « Combo » & OK & OK \\
 10 & Fruit bonus & pomme dorée : +50 points & OK & OK (vue) \\
 11 & Bombe touchée & son, $-25$ points, $-1$ vie, petite explosion & OK (j) & OK (j) \\
-12 & Explosion & 3\textsuperscript{e} touche : tremblement, explosion, flash, son & OK* & OK* \\
+12 & Explosion & 3\textsuperscript{e} touche : tremblement, explosion, flash, son & non confirmé* & non confirmé* \\
 13 & Fin de partie & score, meilleur score, fruits, bombes ; Rejouer, Menu & OK (j) & OK (j) \\
 14 & Difficultés & Facile et Extrême changent vies, cadence, bombes & OK & OK \\
 15 & Lisibilité & UI lisible, effets visibles sans gêner & OK & OK \\
@@ -366,9 +365,9 @@ quand même détruit par la vérification de nom qui suit. Correction : comparai
 \texttt{other.gameObject.tag == tag}, qui ne journalise rien. Les deux builds ont été refaits ensuite
 (section~\ref{sec:apk}).
 
-* Explosion à 3 touches : le joueur la déclare vue, mais aucun des journaux disponibles ne contient de
-3\textsuperscript{e} touche sur une même bombe (au plus \texttt{[Bomb] Touch 2/3}). Le journal de la
-session Quest 1 est perdu. En Extrême, la partie s'arrête dès la première touche (1 vie). En Normal,
+* Explosion à 3 touches, non confirmée : le joueur la déclare vue, mais aucun des journaux
+disponibles ne contient de 3\textsuperscript{e} touche sur une même bombe (au plus
+\texttt{[Bomb] Touch 2/3}). Le journal de la session Quest 1 est perdu. En Extrême, la partie s'arrête dès la première touche (1 vie). En Normal,
 la 3\textsuperscript{e} touche coûte la dernière vie. L'explosion complète se teste donc le plus
 facilement en Facile (5 vies).
 
@@ -454,23 +453,25 @@ les données Unity (\texttt{assets}) 41,1\,\%.}
 \toprule
 Fichier & Octets & Mo & Mio \\
 \midrule
-APK Quest (taille brute) & 54\,978\,539 & 54,98 & 52,43 \\
+APK Quest (taille brute) & 54\,977\,835 & 54,98 & 52,43 \\
 APK Quest, taille de téléchargement estimée & 49\,709\,272 & 49,71 & 47,41 \\
-Contenu de l'APK décompressé (538 entrées) & 149\,395\,751 & 149,40 & 142,47 \\
-ZIP Windows (sans symboles de débogage) & 71\,696\,703 & 71,70 & 68,38 \\
-Dossier Windows livré & 152\,831\,671 & 152,83 & 145,75 \\
+Contenu de l'APK décompressé (538 entrées) & 149\,394\,197 & 149,39 & 142,47 \\
+ZIP Windows remis (sans symboles de débogage) & 71\,426\,270 & 71,43 & 68,12 \\
+Dossier Windows livré & 152\,105\,649 & 152,11 & 145,06 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Les tailles du tableau sont celles des builds refaits après la correction de \texttt{DestroyFloor}
-(section~\ref{sec:tests}). Les captures de l'APK Analyzer et la taille de téléchargement viennent du
-build précédent : l'APK n'a pris que 480~octets (54\,978\,059 $\to$ 54\,978\,539), un écart
-négligeable qui ne change aucune valeur arrondie.
+Les tailles du tableau sont celles des builds finaux, refaits après la correction de
+\texttt{DestroyFloor} (section~\ref{sec:tests}) et le retrait de l'outil MCP for Unity. Les captures de
+l'APK Analyzer et la taille de téléchargement viennent du build du 15/11. L'APK n'a varié que de
+224~octets (54\,978\,059 $\to$ 54\,977\,835), un écart négligeable qui ne change aucune valeur arrondie.
+Le dossier Windows a perdu 0,73~Mo (152,83 $\to$ 152,11~Mo) : la partie runtime de MCP for Unity
+était embarquée dans le build PC.
 
 Un APK est une archive ZIP. Il faut donc comparer l'APK au ZIP Windows (deux archives) et le contenu
 de l'APK au dossier Windows (deux contenus décompressés). L'APK compresse à 36,8\,\% et le ZIP
-Windows à 46,9\,\% : les textures PC (BC) sont déjà denses et le build Windows livre en plus
+Windows à 47,0\,\% : les textures PC (BC) sont déjà denses et le build Windows livre en plus
 \texttt{UnityPlayer.dll} et les assemblies .NET.
 
 \subsection{Contenu de l'APK}
@@ -611,7 +612,7 @@ Fonctions annoncées en S7 absentes du code (volume, entraînement, classement, 
 Build Android : « Failed to update Android SDK » & cause : \fichier{C:\textbackslash Windows\textbackslash System32} absent du PATH du poste, donc \fichier{sdkmanager.bat} ne trouve pas \texttt{findstr}. Build relancé avec System32 ajouté au PATH du seul processus Unity ; PATH du poste à corriger \\
 Plateforme SDK 32 non installée (cible API 32) & cible « Automatic (highest installed) » = API 36 ; le SDK d'Unity, sous \fichier{Program Files}, n'est pas modifiable sans droits administrateur \\
 Explosion additive peu lisible sur Quest (sans HDR) & boule de feu en alpha blend, particules plus grosses \\
-Outil de pilotage de l'éditeur (MCP for Unity) utilisé pendant le développement & paquet isolé dans un commit séparé, pour être retiré proprement avant la remise \\
+Outil de pilotage de l'éditeur (MCP for Unity) utilisé pendant le développement & paquet isolé dans un commit séparé, retiré avant la remise par \texttt{git revert} de ce commit ; builds refaits ensuite \\
 \bottomrule
 Tests Quest : la liaison adb par USB tombait sans arrêt pendant que Meta Horizon Link était ouvert sur le PC & test Quest refait sans câble, journal lu ensuite en rebranchant \\
 Journal du casque écrasé en quelques minutes (tampon de 256~Kio) & \texttt{adb logcat -G 16M} avant la session \\
@@ -627,10 +628,14 @@ Erreur \texttt{Tag: Slice is not defined} répétée dans les deux builds & \tex
 \item Le bouton Quitter du menu réagit au contact des katanas. Pendant le test PC, le jeu s'est fermé
   après une partie, en revenant au menu (contacts \texttt{QuitButton} dans le journal). Un fruit tranché
   près du menu ou un geste ample suffit à quitter par mégarde.
+\item Grande explosion à 3 touches non confirmée : aucun journal conservé ne la contient, sur aucun
+  des deux builds. En Extrême, la partie s'arrête à la 1\textsuperscript{re} touche (1 vie) ; il faut
+  la tester en Facile (5 vies).
 \item Tests : la grille est déclarative (retour du joueur), complétée par les journaux. Les FPS du
-  Quest en Extrême n'ont pas été mesurés, et l'explosion à 3 touches n'apparaît dans aucun journal
-  conservé (section~\ref{sec:tests}). Les tests au casque ont été faits sur le build d'avant la
-  correction de \texttt{DestroyFloor} ; le nouvel APK a seulement été relancé sur le casque.
+  Quest en Extrême n'ont pas été mesurés (section~\ref{sec:tests}).
+\item Les tests au casque ont été faits sur le build d'avant la correction de \texttt{DestroyFloor}.
+  Le nouvel APK est installé ; son démarrage au casque n'a pas été revérifié après le correctif ;
+  le build s'est terminé sans erreur.
 \item Volume, mode entraînement, classement et sauvegarde JSON absents (hérités de S7).
 \item Rig S7 conservé (\texttt{TrackedPoseDriver} legacy, déprécié) plutôt qu'un XR Origin.
 \item Paramètres Android issus des recommandations de Meta, à confirmer avec ceux du cours.

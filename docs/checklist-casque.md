@@ -11,7 +11,7 @@ PC de test : Windows 11, i9-14900KF, RTX 3080, 32 Go RAM. Builds : `Builds/Windo
 1. Installer et lancer **Meta Quest Link** sur le PC ; dans *Paramètres > Général*, définir Meta Quest Link
    comme **runtime OpenXR actif**.
 2. Relier le Quest 3 (câble Link ou Air Link) et entrer dans Link depuis le casque.
-3. Lancer `Builds/Windows/FruitNinjaVR.exe` (ou le dossier extrait de `FruitNinjaVR_Windows.zip`).
+3. Lancer `Builds/Windows/FruitNinjaVR.exe` (ou le dossier extrait de `Builds/Remise/FruitNinjaVR_Part1_Windows_PCVR.zip`).
 4. Faire le parcours de test (section C), colonne **PCVR**.
 5. Vérifier la variante d'effets dans
    `%USERPROFILE%\AppData\LocalLow\JunghoonKIM\FruitNinjaVR\Player.log` : ligne
@@ -49,7 +49,7 @@ Cocher OK / KO et noter les remarques.
 | 9 | Combo | 3 fruits en moins de 2 s → +50, texte « Combo » | OK | OK |
 | 10 | Fruit bonus | pomme dorée (rare) → +50 points | OK | OK (vue) |
 | 11 | Bombe touchée | son, −25 points, −1 vie, petite explosion de particules | OK | OK |
-| 12 | Explosion | 3e touche : tremblement, grande explosion de particules, flash, son | OK* | OK* |
+| 12 | Explosion | 3e touche : tremblement, grande explosion de particules, flash, son | non confirmé* | non confirmé* |
 | 13 | Fin de partie | à 0 vie ou à 120 s : score, meilleur score, fruits, bombes ; Rejouer et Menu | OK | OK |
 | 14 | Difficultés | Facile (5 vies) et Extrême (1 vie) changent vies, cadence et bombes | OK | OK |
 | 15 | Lisibilité | textes de l'UI lisibles, effets visibles sans gêner | OK | OK |

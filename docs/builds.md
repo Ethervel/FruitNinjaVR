@@ -108,4 +108,5 @@ Procédure et grille : `docs/checklist-casque.md`. Log du test Quest : `docs/tes
   Link, l'appli reste à 72 Hz en jeu : 1 image perdue en 38 s en Normal, aucune en Extrême, marge de
   71 à 85 %. Un creux à 63 Hz au retour au menu. Variante d'effets PCVR confirmée dans `Player.log`.
 - **Après les tests** : correction de `DestroyFloor` (erreur `Tag: Slice is not defined`), puis les deux
-  builds ont été refaits. Le nouvel APK a été réinstallé et relancé sur le casque.
+  builds ont été refaits. Le nouvel APK est installé ; son démarrage au casque n'a pas été revérifié
+  après le correctif ; le build s'est terminé sans erreur.
