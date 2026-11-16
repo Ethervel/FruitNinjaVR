@@ -1,18 +1,16 @@
-% Fruit Ninja VR - Part 1 - Rapport (premier jet)
-% Compilation : latexmk -pdf rapport.tex  (ou pdflatex x2)
+% Fruit Ninja VR - Part 1 - Rapport (version courte)
+% Compilation : pdflatex x2 (la version longue est conservée dans rapport-v1.tex)
 \documentclass[11pt,a4paper]{article}
 
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
 \usepackage[french]{babel}
-\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage[a4paper,margin=2.3cm]{geometry}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{array}
-\usepackage{xcolor}
-\usepackage[most]{tcolorbox}
 \usepackage{enumitem}
 \usepackage{caption}
 \usepackage{float}
@@ -22,16 +20,12 @@
 \graphicspath{{../captures/}}
 \setlist{nosep,leftmargin=*}
 \captionsetup{font=small,labelfont=bf}
-\setlength{\parskip}{0.4em}
+\setlength{\parskip}{0.5em}
 \setlength{\parindent}{0pt}
 \renewcommand{\arraystretch}{1.15}
 \newcolumntype{L}{>{\raggedright\arraybackslash}X}
 \newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
 \newcommand{\fichier}[1]{\texttt{\small #1}}
-
-\definecolor{afaire}{RGB}{200,90,0}
-\newtcolorbox{afaire}[1][]{colback=orange!8,colframe=afaire,fonttitle=\bfseries,
-  title={#1},boxrule=0.8pt,arc=2pt,left=6pt,right=6pt}
 
 \pagestyle{fancy}
 \fancyhf{}
@@ -46,603 +40,323 @@
   {\LARGE\bfseries Fruit Ninja VR -- Part 1}\\[4pt]
   {\Large Reprise et déploiement multiplateforme}\\[10pt]
   ST2VAAS 2026-2027 \quad--\quad Junghoon KIM (groupe d'une personne)\\[4pt]
-  Projet : \url{https://github.com/Ethervel/FruitNinjaVR}, branche \texttt{part1}, tag \texttt{part1-remise}
-  \\[2pt]
+  Projet : \url{https://github.com/Ethervel/FruitNinjaVR}, branche \texttt{part1}, tag \texttt{part1-remise}\\[2pt]
   {\small Unity 6000.0.56f1 -- URP 17.0.4 -- OpenXR 1.15.1 -- XR Interaction Toolkit 3.0.8}
 \end{center}
 
-
-\tableofcontents
-
-% =====================================================================
-\section{État initial du projet S7, corrections et organisation}
-\label{sec:etat}
-
-\subsection{Point de départ}
-
-Le projet repris est le mini-projet S7 (dépôt \texttt{LaelKim/Fruit\_Ninja}, branche \texttt{main},
-commit \texttt{2db0f77} du 26/10/2025). Dans le dépôt de remise
-(\url{https://github.com/Ethervel/FruitNinjaVR}), cette version d'origine se trouve sur la branche
-\texttt{main}, avec le tag \texttt{s7-initial} ; tout le travail de la Part 1 est sur la branche
-\texttt{part1}. Le projet a été ouvert avec sa version
-exacte d'Unity (6000.0.56f1), puis inspecté : lecture du code et des scènes et audit automatique
-(script éditeur \fichier{ProjectAudit.cs} : erreurs de compilation, références cassées, scripts
-manquants, matériaux non URP).
-
-\begin{table}[H]
-\centering\small
-\caption{Version, rendu et paquets du projet S7.}
-\begin{tabularx}{\textwidth}{@{}lL@{}}
-\toprule
-Élément & Valeur relevée \\
-\midrule
-Éditeur & Unity 6000.0.56f1 (installé pour l'occasion avec Android et Windows Build Support) \\
-Rendu & URP 17.0.4 ; niveaux de qualité \texttt{Mobile} et \texttt{PC} (par défaut) \\
-XR & XR Plugin Management 4.5.2, OpenXR 1.15.1, XR Interaction Toolkit 3.0.8 \\
-Entrées & Input System 1.14.2, \emph{Active Input Handling} = Both (ancien et nouveau) \\
-Rig & \texttt{XRRig} : \texttt{CameraOffset} + \texttt{TrackedPoseDriver} (XR Legacy Input Helpers), pas d'XR Origin \\
-XR sur PC & loader OpenXR, profil Oculus Touch \\
-XR sur Android & \textbf{aucun loader}, Meta Quest Support désactivé \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-Le projet ne compilait sans erreur que pour le PC : un APK construit tel quel aurait démarré sans VR.
-
-\subsection{Fonctions S7 : état observé}
-
-\begin{table}[H]
-\centering\small
-\caption{Fonctions S7 (« OK (code) » : présent et cohérent à la lecture, comportement à confirmer au casque).}
-\begin{tabularx}{\textwidth}{@{}P{3.2cm}LL@{}}
-\toprule
-Fonction & État observé & Part 1 \\
-\midrule
-Deux sabres & OK (code) : un katana par main, coupe au-delà de 1~m/s & prefabs \texttt{Katana\_Left/Right} \\
-Lancement des fruits & OK (code) : 4 points de lancement, 8 fruits & fichier renommé \fichier{FruitSpawner.cs} \\
-Coupe & OK (code) : découpe réelle du mesh, son & -- \\
-Fruits bonus & \textbf{absents} (champs déclarés, jamais utilisés) & pomme dorée, 7\,\% des tirs, 50 points \\
-Bombes & OK (code) : $-25$ points, $-1$ vie, explosion à la 3\textsuperscript{e} touche & son joué en double corrigé \\
-Score, combo & OK (code) : 10 points, combo +50, meilleur score & -- \\
-Difficultés, minuteur & OK (code) : 4 niveaux, partie de 120~s & -- \\
-Menus & OK (code) : accueil, difficulté, HUD, fin de partie & -- \\
-Effets & partiels : aucun Particle System & jus et explosion (section~\ref{sec:fx}) \\
-Volume, entraînement, classement, sauvegarde JSON & \textbf{absents} du code remis & non implémentés, signalés \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-Restent dans la scène des objets de test S7 (une bombe posée et son testeur clavier) et des
-\texttt{Debug.Log} à chaque collision de sabre, à surveiller lors de la mesure de fluidité.
-
-\subsection{Organisation retenue}
-
-La racine d'\texttt{Assets} mélangeait scripts, prefabs, modèles, matériaux et sons. Tous les
-déplacements ont été faits par l'API de l'éditeur (\texttt{AssetDatabase.MoveAsset}), jamais dans
-l'explorateur Windows : les GUID et les \texttt{.meta} sont conservés, donc les références des scènes et
-prefabs restent valides. L'audit relancé après chaque étape donne 0 erreur de compilation, 0 référence
-cassée et 0 script manquant dans la scène du jeu.
-
-\begin{table}[H]
-\centering\small
-\caption{Arborescence après réorganisation.}
-\begin{tabularx}{\textwidth}{@{}lL@{}}
-\toprule
-Dossier & Contenu \\
-\midrule
-\texttt{Scenes/} & \texttt{FruitNinjaVR\_Main} (seule scène du build, index 0) ; \texttt{Tests/SlicerTestScene} \\
-\texttt{Scripts/} & \texttt{Audio}, \texttt{Core}, \texttt{Debug}, \texttt{FX}, \texttt{Gameplay}, \texttt{Slicing}, \texttt{UI} \\
-\texttt{Prefabs/} & \texttt{Fruits/Fruit\_<Nom>}, \texttt{Fruit\_Bonus}, \texttt{Bombs/Bomb}, \texttt{Katanas/Katana\_Left/Right} \\
-\texttt{Models/}, \texttt{Materials/}, \texttt{Textures/} & par catégorie : \texttt{Bomb}, \texttt{Environment}, \texttt{Fruits}, \texttt{Katana} \\
-\texttt{Audio/} & \texttt{SFX/} (katana, fruit, bombe, partie), \texttt{UI/} (boutons), noms \texttt{SFX\_<Rôle>} \\
-\texttt{FX/} & Particle Systems, matériaux et texture des effets \\
-\texttt{Editor/FruitNinjaTools/} & outils : audit, réorganisation, effets, captures, builds \\
-\texttt{\_Unused/} & assets hérités non utilisés, conservés \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-Deux fichiers C\# n'avaient pas le nom de leur classe (\fichier{NewFruitSpawner.cs} pour
-\texttt{FruitSpawner}, \fichier{destroyFLoor.cs} pour \texttt{DestroyFloor}) : ils ont été renommés.
-Les objets de la scène ont reçu des noms explicites (\texttt{Katana\_Left}, \texttt{Dojo\_A},
-\texttt{FX\_BombFlashQuad}\ldots). Les FBX gardent leur nom, car les identifiants de leurs sous-objets en
-dépendent. Séquence de démarrage : accueil, choix de la difficulté, partie de 120~s, fin de partie
-(rejouer ou menu), le tout dans la scène unique.
+\vspace{0.5em}
 
 % =====================================================================
-\section{Effets de particules : variantes PCVR et Quest}
-\label{sec:fx}
+\section{Le projet de départ et ce que j'ai remis en ordre}
 
-\subsection{Les deux effets}
+J'ai repris mon mini-projet du S7, un Fruit Ninja en VR (dépôt \texttt{LaelKim/Fruit\_Ninja}, commit
+\texttt{2db0f77} du 26/10/2025). Dans le dépôt de remise, cette version d'origine est sur la branche
+\texttt{main} (tag \texttt{s7-initial}) ; tout le travail de la Part 1 est sur la branche \texttt{part1}.
 
-\begin{itemize}
-\item \textbf{Éclaboussure de jus} : déclenchée par \texttt{KatanaSlicer} au point de contact entre la lame
-  et le fruit, teintée de la couleur du fruit (rouge pastèque, orange, jaune banane\ldots).
-\item \textbf{Explosion de bombe} : petite explosion (échelle 0,5) à chaque touche, au moment de la pénalité ;
-  explosion complète à la 3\textsuperscript{e} touche, avec le son et le flash existants.
-\end{itemize}
-
-Les prefabs (\texttt{FX\_FruitJuice\_PCVR/Quest}, \texttt{FX\_BombExplosion\_PCVR/Quest}) sont générés
-par un script éditeur, donc reproductibles. Le composant \texttt{GameFX} choisit la variante
-automatiquement : Quest si le code est compilé pour Android (\texttt{\#if UNITY\_ANDROID}), PCVR sinon.
-Il écrit la variante utilisée dans le log, ce qui permet de la vérifier sur chaque build.
-
-\subsection{Paramètres et justifications}
-
-Le principe pour le Quest : moins de particules transparentes (l'\emph{overdraw} est le premier coût sur
-un GPU mobile), moins de sous-systèmes (chacun ajoute un draw call et une simulation) et suppression des
-modules coûteux : collisions avec le monde (requêtes physiques par particule), bruit de turbulence,
-éclairage par pixel et \emph{soft particles} (lecture de la texture de profondeur, désactivée sur le
-renderer Quest).
+J'ai d'abord installé la version exacte d'Unity du projet, 6000.0.56f1, pour ne pas le faire migrer
+sans le vouloir. Ensuite j'ai lu le code et les scènes, et j'ai écrit un petit script d'audit
+(\fichier{ProjectAudit.cs}) qui cherche les erreurs de compilation, les références cassées, les scripts
+manquants et les matériaux non URP. Voici ce que j'ai trouvé.
 
 \begin{table}[H]
 \centering\small
-\caption{Éclaboussure de jus.}
-\begin{tabularx}{\textwidth}{@{}P{2.6cm}P{3.6cm}P{3.1cm}L@{}}
+\caption{État du projet S7 au départ.}
+\begin{tabularx}{\textwidth}{@{}P{3.6cm}L@{}}
 \toprule
-Paramètre & PCVR & Quest & Justification \\
+Élément & Constat \\
 \midrule
-Sous-systèmes & 2 : gouttes + brume & 1 : gouttes & un draw call et une simulation de moins \\
-Particules (burst / max) & 85 / 110 & 20 / 24 & overdraw, coût de simulation \\
-Durée de vie & 0,5--0,9 s (brume 0,3--0,5) & 0,3--0,5 s & moins de particules vivantes en série \\
-Gouttes & 1,5--3,5 m/s ; 0,015--0,04 m & 1,2--2,5 m/s ; 0,035--0,06 m & moins nombreuses, plus grosses pour rester lisibles \\
-Rendu & Stretched Billboard & Billboard & suffisant à la résolution du Quest \\
-Collision & World (rebond 0,2) & aucune & requêtes physiques par particule \\
-Matériau & Particles/Lit, soft particles & Particles/Unlit & pas d'éclairage ni de lecture de profondeur \\
+Rendu et XR & URP 17.0.4 ; OpenXR 1.15.1 et XR Interaction Toolkit 3.0.8 ; profil Oculus Touch sur PC \\
+XR sur Android & \textbf{aucun loader}, Meta Quest Support désactivé : un APK aurait démarré sans VR \\
+Entrées & Input System 1.14.2, mais \emph{Active Input Handling} réglé sur « Both » \\
+Rig & ancien \texttt{XRRig} avec \texttt{TrackedPoseDriver} (legacy), pas d'XR Origin \\
+Jeu & deux katanas, lancement de 8 fruits depuis 4 points, coupe du mesh, bombes, score et combo,
+4 difficultés, partie de 120~s, menus : présents et cohérents \\
+Absents du code & fruits bonus (champs déclarés mais jamais utilisés), réglage du volume, mode
+entraînement, classement, sauvegarde JSON \\
+Divers & deux fichiers C\# qui ne portaient pas le nom de leur classe ; un son de bombe joué en double ;
+objets de test et \texttt{Debug.Log} laissés dans la scène \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
+J'ai ajouté le fruit bonus, puisque le jeu le prévoyait déjà : une pomme dorée qui sort dans 7~\% des
+tirs et rapporte 50 points. J'ai corrigé le son en double et renommé les deux scripts
+(\fichier{FruitSpawner.cs}, \fichier{DestroyFloor.cs}). En revanche, je n'ai pas recréé le volume,
+l'entraînement, le classement ni la sauvegarde JSON : ils n'existaient pas dans la version remise au
+S7, et je les signale plutôt que de les inventer.
+
+\paragraph{Organisation.} La racine d'\texttt{Assets} mélangeait tout. J'ai rangé le projet en dossiers
+par rôle : \texttt{Scenes}, \texttt{Scripts} (par thème : \texttt{Core}, \texttt{Gameplay},
+\texttt{Slicing}, \texttt{FX}\ldots), \texttt{Prefabs}, \texttt{Models}, \texttt{Materials},
+\texttt{Textures}, \texttt{Audio}, \texttt{FX}, et un dossier \texttt{\_Unused} pour ce qui ne sert
+plus. J'ai fait tous les déplacements avec l'API de l'éditeur (\texttt{AssetDatabase.MoveAsset}) et
+jamais dans l'explorateur Windows : comme les \texttt{.meta} et les GUID suivent, aucune référence ne
+casse. Après chaque étape, l'audit donnait 0 erreur, 0 référence cassée et 0 script manquant. Le jeu
+tient dans une seule scène, \texttt{FruitNinjaVR\_Main} : accueil, choix de la difficulté, partie de
+120~s, puis écran de fin avec Rejouer et Menu.
+
+% =====================================================================
+\section{Les effets de particules, en version PC et en version Quest}
+
+J'ai fait deux effets. Le premier est une éclaboussure de jus au point où la lame touche le fruit,
+de la couleur du fruit. Le second est une explosion de bombe : petite à chaque touche, au moment où
+on perd des points, puis complète à la 3\textsuperscript{e} touche, avec le son et le flash qui
+existaient déjà.
+
+Chaque effet existe en deux variantes. Un composant, \texttt{GameFX}, choisit la bonne tout seul : la
+variante Quest si le jeu est compilé pour Android, la variante PC sinon. Il écrit aussi son choix dans
+le journal, ce qui m'a permis de vérifier ensuite que chaque build utilisait la bonne. Les prefabs sont
+générés par un script éditeur, donc je peux les refaire à l'identique.
+
+\paragraph{Pourquoi alléger sur le Quest.} Sur un GPU mobile, ce qui coûte le plus avec des
+particules, c'est l'\emph{overdraw} : chaque particule transparente oblige à redessiner les mêmes
+pixels plusieurs fois. J'ai donc d'abord réduit le nombre de particules. J'ai aussi retiré un
+sous-système par effet, parce que chacun ajoute une simulation et un appel de dessin. Enfin, j'ai
+enlevé ce qui coûte cher par particule : les collisions avec le décor, le bruit de turbulence,
+l'éclairage par pixel et les \emph{soft particles}, qui ont besoin de la texture de profondeur. Pour
+que l'effet reste lisible malgré tout, les gouttes du Quest sont moins nombreuses mais plus grosses.
+
 \begin{table}[H]
 \centering\small
-\caption{Explosion de bombe.}
-\begin{tabularx}{\textwidth}{@{}P{2.6cm}P{3.6cm}P{3.1cm}L@{}}
+\caption{Réglages principaux des deux effets.}
+\begin{tabularx}{\textwidth}{@{}P{3.0cm}P{4.3cm}P{3.6cm}L@{}}
 \toprule
-Paramètre & PCVR & Quest & Justification \\
+ & PC & Quest & Pourquoi \\
 \midrule
-Sous-systèmes & 4 : flash, feu, étincelles, fumée & 3 : sans fumée & la fumée est la pire source d'overdraw \\
+\multicolumn{4}{@{}l}{\textit{Éclaboussure de jus}} \\
+Sous-systèmes & 2 (gouttes + brume) & 1 (gouttes) & une simulation de moins \\
+Particules (burst / max) & 85 / 110 & 20 / 24 & overdraw \\
+Gouttes & 0,015--0,04 m, étirées & 0,035--0,06 m, Billboard & moins, mais visibles \\
+Collision, matériau & rebond sur le décor ; Lit, soft particles & aucune ; Unlit & coût par particule \\
+\midrule
+\multicolumn{4}{@{}l}{\textit{Explosion de bombe}} \\
+Sous-systèmes & 4 (flash, feu, étincelles, fumée) & 3 (sans fumée) & la fumée crée le plus d'overdraw \\
 Particules (burst / max) & 186 / 221 & 41 / 51 & divisé par 4,5 environ \\
-Boule de feu & 0,25--0,6 m, additive, Noise & 0,4--0,75 m, alpha blend, sans Noise & sans HDR ni bloom, l'additif se perdait sur le décor clair \\
-Étincelles & 4--8 m/s, étirées, collision & 3--6 m/s, Billboard, sans collision & même raison que le jus \\
-Flash & 1 particule, 1,5 m, 0,15 s & 1 particule, 1,2 m, 0,12 s & lisibilité immédiate, coût négligeable \\
-Matériaux & Unlit additif + Lit (fumée), soft & Unlit additif et alpha & shaders les plus simples d'URP \\
+Boule de feu & additive, avec bruit & alpha blend, sans bruit & voir ci-dessous \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Paramètres communs : simulation en espace monde, lancement par code, aucune ombre, destruction
-automatique de l'instance. Une seule texture partagée de 64$\times$64 pixels (disque à bord doux).
+Pour la boule de feu, j'ai d'abord gardé le mode additif sur le Quest, mais sans HDR ni bloom elle
+disparaissait presque sur le décor clair du dojo. Je suis passé en alpha blend avec des particules
+plus grosses, et l'explosion se voit de nouveau. Les deux variantes partagent une seule petite texture
+de 64$\times$64 pixels.
 
-\subsection{Captures comparables}
-
-Les captures de la figure~\ref{fig:fx} sont rendues dans l'éditeur depuis le point de vue du joueur
-(1,6~m), avec le même cadrage et le même instant de simulation (jus : 0,12~s après la coupe ; bombe :
-0,25~s). La variante PCVR utilise le niveau de qualité \texttt{PC}, la variante Quest le niveau
-\texttt{Mobile} (sans HDR ni post-process, d'où la teinte différente du décor). Ce ne sont pas des
-captures dans le casque.
+Pour comparer, j'ai rendu les deux variantes dans l'éditeur, depuis la hauteur des yeux du joueur
+(1,6~m), avec le même cadrage et au même instant (0,12~s après la coupe pour le jus, 0,25~s pour la
+bombe). Ce ne sont pas des captures du casque ; la teinte du décor change parce que le Quest utilise le
+niveau de qualité \texttt{Mobile}, sans HDR ni post-process.
 
 \begin{figure}[H]
 \centering
 \begin{tabular}{@{}cc@{}}
-\includegraphics[width=0.485\textwidth]{FX_FruitJuice_PCVR.png} &
-\includegraphics[width=0.485\textwidth]{FX_FruitJuice_Quest.png} \\
-\small Jus -- PCVR (85 particules) & \small Jus -- Quest (20 particules) \\[4pt]
-\includegraphics[width=0.485\textwidth]{FX_BombExplosion_PCVR.png} &
-\includegraphics[width=0.485\textwidth]{FX_BombExplosion_Quest.png} \\
-\small Explosion -- PCVR (185 particules) & \small Explosion -- Quest (40 particules) \\
+\includegraphics[width=0.46\textwidth]{FX_FruitJuice_PCVR.png} &
+\includegraphics[width=0.46\textwidth]{FX_FruitJuice_Quest.png} \\
+\small Jus -- PC (85 particules) & \small Jus -- Quest (20 particules) \\[4pt]
+\includegraphics[width=0.46\textwidth]{FX_BombExplosion_PCVR.png} &
+\includegraphics[width=0.46\textwidth]{FX_BombExplosion_Quest.png} \\
+\small Explosion -- PC (185 particules) & \small Explosion -- Quest (40 particules) \\
 \end{tabular}
-\caption{Rendus de l'éditeur, variantes PCVR (gauche) et Quest (droite) ; particules vivantes à l'instant de la capture.}
+\caption{Les deux effets rendus dans l'éditeur : PC à gauche, Quest à droite.}
 \label{fig:fx}
 \end{figure}
 
-Mesuré : nombre de particules ($\div 4$ pour le jus, $\div 4{,}6$ pour l'explosion), nombre de
-sous-systèmes (2$\to$1 et 4$\to$3), modules coûteux retirés. Au casque, la partie Normal sur le Quest reste à
-72~FPS, avec des coupes et des bombes (section~\ref{sec:tests}).
-
 % =====================================================================
-\section{Configuration des builds, matériel et tests}
-\label{sec:builds}
+\section{Les builds et les tests au casque}
 
-\subsection{Configuration}
+\paragraph{Réglages des builds.} J'ai écrit un script qui construit les deux versions et note les
+réglages utilisés (menus \texttt{Tools > Fruit Ninja}). La version PC est en Mono, x86\_64, Direct3D~11,
+textures BC, niveau de qualité \texttt{PC} (HDR, SSAO, ombres douces, post-process). La version Quest
+est en IL2CPP, ARM64 uniquement, Vulkan, textures ASTC, niveau \texttt{Mobile} (MSAA 4x, sans HDR ni
+post-process), API Android minimale 29 et cible automatique (36). Les deux utilisent OpenXR, le rendu
+Single Pass Instanced, l'Input System seul et la seule scène \texttt{FruitNinjaVR\_Main}.
 
-Les deux builds sont produits par un script éditeur (menus \texttt{Tools > Fruit Ninja > Build\ldots}) qui
-relève aussi les paramètres utilisés. Les deux réussissent sans erreur.
+Je ne connaissais pas les réglages Android vus en cours. J'ai donc suivi les recommandations de Meta
+et le profil Meta Quest d'Unity 6 ; il faudra les comparer à ceux du cours. Il a aussi fallu activer
+OpenXR et Meta Quest Support pour Android, et passer l'Input System en mode seul, car le mode « Both »
+n'est pas accepté sur Android. J'ai gardé le rig du S7 : il fonctionne sur les deux plateformes, car
+OpenXR fournit les poses dont il a besoin. La validation OpenXR ne laisse qu'un avertissement sur le
+SSAO pour Android ; c'est un faux positif, puisque le SSAO n'est que dans le rendu PC.
+
+\paragraph{Matériel.} PC sous Windows 11 (i9-14900KF, RTX 3080, 32 Go). Casque Meta Quest 3 sous Meta
+Horizon OS v205 (Android 14), écran à 72~Hz pendant le test. Pour le PC, Meta Horizon Link (runtime
+1.208.0) par câble USB-C.
+
+\paragraph{Comment j'ai testé.} Sur le Quest, j'ai fait deux sessions. Pendant la première, avec le
+câble, la connexion adb tombait sans arrêt, parce que Link, ouvert sur le PC, utilisait le même câble.
+J'ai donc refait le test sans câble : j'ai agrandi le journal du casque avant de jouer, puis je l'ai
+relu en rebranchant. Les captures d'écran par adb sortaient noires ; j'ai pris les captures du casque
+lui-même (bouton Meta + gâchette). Pour les FPS du Quest, j'ai lu les statistiques du compositeur Meta
+dans le journal (une ligne par seconde). Pour le PC, j'ai activé le HUD de performance de Link et je
+l'ai capturé toutes les 2~s dans la fenêtre Oculus Mirror.
+
+La grille ci-dessous reprend le retour du joueur, qui a répondu « tout OK » sur les deux builds. C'est
+du déclaratif ; je marque (j) ce que j'ai pu confirmer aussi dans les journaux.
 
 \begin{table}[H]
 \centering\small
-\caption{Configuration des builds.}
-\begin{tabularx}{\textwidth}{@{}P{3.3cm}LL@{}}
+\caption{Grille de test résumée (OK : retour du joueur ; (j) : confirmé aussi par le journal).}
+\begin{tabularx}{\textwidth}{@{}P{3.4cm}LP{2.0cm}P{2.0cm}@{}}
 \toprule
- & Windows PCVR & Meta Quest 3 (autonome) \\
+Point & Ce qu'on vérifie & PC (Link) & Quest \\
 \midrule
-Sortie & \fichier{Builds/Windows/\allowbreak FruitNinjaVR.exe} & \fichier{Builds/Quest/\allowbreak FruitNinjaVR\_Quest.apk} \\
-Scène & \texttt{FruitNinjaVR\_Main} (index 0) & idem \\
-Scripting backend & Mono & IL2CPP \\
-Architecture & x86\_64 & ARM64 uniquement \\
-API graphique & Direct3D 11 & Vulkan \\
-Textures & BC (DXT, défaut PC) & ASTC \\
-API Android & -- & min 29 (Android 10), cible automatique (36) \\
-Qualité & \texttt{PC} : HDR, SSAO, ombres douces, post-process & \texttt{Mobile} : MSAA 4x, sans HDR ni post-process \\
-XR & OpenXR, profils Oculus Touch et Quest Touch Plus & OpenXR + Meta Quest Support, mêmes profils \\
-Rendu stéréo & Single Pass Instanced & Single Pass Instanced \\
-Entrées & Input System uniquement & Input System uniquement \\
-Effets & \texttt{FX\_*\_PCVR} & \texttt{FX\_*\_Quest} \\
+Démarrage & pas d'écran noir ni de crash & OK (j) & OK (j) \\
+Tracking, katanas & tête, deux manettes, un katana par main & OK & OK \\
+Menu & rayon et gâchette droite & OK & OK \\
+Coupe, jus, combo & coupe nette, +10, jus coloré, combo +50, pomme dorée vue & OK (j) & OK (j) \\
+Bombe touchée & $-25$ points, $-1$ vie, petite explosion & OK (j) & OK (j) \\
+Explosion à 3 touches & tremblement, grande explosion, flash & non confirmée & non confirmée \\
+Fin de partie, difficultés & écran de fin, vies selon le niveau & OK (j) & OK (j) \\
+Lisibilité, fluidité & textes lisibles, pas de saccade & OK & OK \\
+Stabilité & 2 parties sans crash & OK (j) & OK \\
+Autonomie & jeu lancé sans câble ni PC & -- & OK (j) \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Les paramètres Android validés en cours n'étant pas connus, les valeurs viennent des recommandations
-actuelles de Meta (\emph{Configure Unity settings}, \emph{Prepare your app for publishing}) et du profil
-Meta Quest d'Unity 6 : API minimale 29, IL2CPP et ARM64 seuls (le Store n'accepte que le 64 bits),
-Vulkan, Single Pass Instanced, ASTC, MSAA 4x. % TODO : confirmer avec les valeurs du cours.
-Le rig S7 (TrackedPoseDriver legacy) est conservé : il lit les poses par le sous-système d'entrée XR
-fourni par OpenXR sur les deux plateformes. La validation OpenXR d'Unity ne garde qu'un avertissement sur
-Android (SSAO), qui est un faux positif : le SSAO n'existe que dans le renderer PC, exclu d'Android.
-
-\subsection{Matériel}
-
-\begin{itemize}
-\item PC : Windows 11, Intel i9-14900KF, NVIDIA RTX 3080, 32 Go de RAM.
-\item Casque : Meta Quest 3, Meta Horizon OS v205 (Android 14, API 34, build \texttt{UP1A.231005.007.A1},
-  correctif de sécurité du 01/06/2026), écran 4128\,$\times$\,2208 (deux yeux), 72~Hz pendant le test.
-\item PCVR : Meta Horizon Link, runtime \texttt{OVRServer} 1.208.0 (relevé dans le journal du service ;
-  installation initiale 1.115.0), casque relié par câble USB-C, runtime OpenXR actif = Meta
-  (\texttt{oculus\_openxr\_64.json}).
-\item Mesure des FPS sur le Quest : statistiques du compositeur Meta (lignes \texttt{VrApi} du journal
-  \texttt{adb logcat}, une ligne par seconde : images affichées, temps GPU de l'application, charge CPU/GPU,
-  température). OVR Metrics Tool n'était pas installé et n'a pas été nécessaire.
-\item Mesure des FPS sur le PC : HUD de performance de Link (\emph{Performance Summary}, activé par
-  \texttt{OculusDebugToolCLI}, \texttt{perfhud set-mode 1}), enregistré par une capture de la fenêtre
-  Oculus Mirror toutes les 2~s. On y lit la fréquence de l'application, la marge de performance et les
-  compteurs cumulés d'images perdues.
-\end{itemize}
-
-\subsection{Résultats des tests}
-\label{sec:tests}
-
-\paragraph{Déroulement (Quest).} Le 16/11/2026, l'APK a été installée par \texttt{adb install -r}
-(paquet \texttt{com.JunghoonKIM.FruitNinjaVR}). Il y a eu deux sessions.
-\begin{itemize}
-\item \textbf{Session 1, câble USB branché} (5~min~16~s de jeu). La liaison adb tombait sans cesse, car
-  Meta Horizon Link, ouvert sur le PC, se connecte au casque par le même câble. Seul le démarrage a pu être
-  enregistré ; la capture d'écran par \texttt{adb exec-out screencap} ne donnait que des images noires.
-  Le journal interne du casque (256~Kio) avait déjà écrasé la partie.
-\item \textbf{Session 2, autonome, sans câble} (2~min~38~s de jeu, dont une partie complète en Normal de
-  85~s). Le tampon du journal a été agrandi au préalable (\texttt{adb logcat -G 16M}), puis lu après la
-  session en rebranchant le câble. Le joueur a pris les captures lui-même (bouton Meta + gâchette).
-\end{itemize}
-\paragraph{Déroulement (PC).} Le build Windows a été lancé sur le PC, le casque étant relié par Link
-(câble), en deux exécutions : une partie Normal complète (fin par perte des 3 vies), puis une partie
-Extrême (fin à la première bombe touchée). Le \fichier{Player.log} des deux exécutions est versionné
-dans \fichier{docs/tests/pcvr-player-log.txt}. Les captures viennent de la fenêtre miroir du jeu,
-c'est-à-dire de la vue d'un œil rendue par Unity.
-
-La grille reprend le retour du joueur (« tout OK » sur chaque build), qui est déclaratif. Les points
-vérifiés aussi dans les journaux (Quest : session 2 ; PC : \fichier{Player.log}) sont signalés par (j).
-Le journal filtré du Quest est versionné dans \fichier{docs/tests/quest-logcat.txt}.
-
-\begin{table}[H]
-\centering\small
-\caption{Parcours de test. OK : retour du joueur ; (j) : confirmé aussi par le journal ; * : voir la
-remarque sous le tableau.}
-\begin{tabularx}{\textwidth}{@{}r P{2.6cm} L P{1.9cm} P{2.3cm}@{}}
-\toprule
-\# & Élément & Vérification & PCVR & Quest \\
-\midrule
-1 & Chargement & démarrage sans écran noir ni crash ; temps de chargement & OK (j) & OK (j) \\
-2 & Tracking casque & la vue suit la tête ; hauteur des yeux, sol & OK & OK \\
-3 & Tracking manettes & deux manettes suivies sans retard ni décalage & OK & OK \\
-4 & Sabres & un katana dans chaque main, bien orienté & OK & OK \\
-5 & Menu & rayon de la manette droite ; gâchette : Start, difficulté, Retour & OK & OK \\
-6 & Lancement & fruits lancés depuis les 4 points, atteignables & OK & OK \\
-7 & Coupe & geste rapide : fruit coupé, son, +10 points & OK (j) & OK (j) \\
-8 & Effet jus & éclaboussure au point de coupe, couleur du fruit & OK & OK \\
-9 & Combo & 3 fruits en moins de 2 s : +50, texte « Combo » & OK & OK \\
-10 & Fruit bonus & pomme dorée : +50 points & OK & OK (vue) \\
-11 & Bombe touchée & son, $-25$ points, $-1$ vie, petite explosion & OK (j) & OK (j) \\
-12 & Explosion & 3\textsuperscript{e} touche : tremblement, explosion, flash, son & non confirmé* & non confirmé* \\
-13 & Fin de partie & score, meilleur score, fruits, bombes ; Rejouer, Menu & OK (j) & OK (j) \\
-14 & Difficultés & Facile et Extrême changent vies, cadence, bombes & OK & OK \\
-15 & Lisibilité & UI lisible, effets visibles sans gêner & OK & OK \\
-16 & Fluidité & pas de saccade lors des coupes et explosions & OK & OK \\
-17 & FPS & moyenne / minimum (voir tableau suivant) & 72 / 63 (HUD) & 72,5 / 71 (Normal) \\
-18 & Stabilité & 2 parties complètes sans crash ni blocage & OK (j) & OK \\
-19 & Autonomie & build Quest joué sans câble ni PC & -- & OK (j) \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-Le journal de la session 2 confirme : la variante d'effets \texttt{[GameFX] variante utilisée : Quest
-(FX\_FruitJuice\_Quest, FX\_BombExplosion\_Quest)} ; une partie Normal à 3 vies (16 fruits coupés,
-3 touches de bombe, fin à 0 vie) ; aucune exception ni crash (le tampon \texttt{crash} du casque est vide),
-et une fermeture normale du processus. Côté PC, le \fichier{Player.log} confirme
-\texttt{[GameFX] variante utilisée : PCVR (FX\_FruitJuice\_PCVR, FX\_BombExplosion\_PCVR)}, une partie
-Normal (45 fruits coupés, 3 bombes, score 595), une partie Extrême (11 fruits, fin à la première bombe),
-aucune exception et un arrêt normal (\texttt{System Shutdown}).
-
-Les deux builds journalisaient une erreur répétée, sans effet visible : \texttt{Tag: Slice is not
-defined} (42 fois sur le Quest, 122 sur le PC). Le script S7 \texttt{DestroyFloor} testait les morceaux
-tombés au sol avec \texttt{CompareTag("Slice")}, un tag qui n'existe pas dans le projet ; l'objet était
-quand même détruit par la vérification de nom qui suit. Correction : comparaison directe
-\texttt{other.gameObject.tag == tag}, qui ne journalise rien. Les deux builds ont été refaits ensuite
-(section~\ref{sec:apk}).
-
-* Explosion à 3 touches, non confirmée : le joueur la déclare vue, mais aucun des journaux
-disponibles ne contient de 3\textsuperscript{e} touche sur une même bombe (au plus
-\texttt{[Bomb] Touch 2/3}). Le journal de la session Quest 1 est perdu. En Extrême, la partie s'arrête dès la première touche (1 vie). En Normal,
-la 3\textsuperscript{e} touche coûte la dernière vie. L'explosion complète se teste donc le plus
-facilement en Facile (5 vies).
-
-\begin{table}[H]
-\centering\small
-\caption{Fluidité mesurée, à 72~Hz sur les deux builds. Quest : lignes \texttt{VrApi} du compositeur,
-une par seconde, session 2 sans câble. PC : HUD de performance de Link, relevé toutes les 2~s.}
-\begin{tabularx}{\textwidth}{@{}P{2.4cm}P{2.6cm}P{1.5cm}P{1.6cm}L@{}}
-\toprule
-Build & Outil & FPS moyen & FPS minimum & Remarques (CPU/GPU, saccades) \\
-\midrule
-PCVR -- Normal & HUD de Link (miroir) & 72,0 & 72 en jeu ; 63 au retour au menu & 38~s mesurées
-  (la fin de la partie) : 1 image perdue par l'application, courbe de fréquence plate à 72 ; marge de
-  performance de 77 à 84~\% ; latence mouvement-photon d'environ 43~ms ; 4 images perdues au passage
-  écran de fin $\to$ menu \\
-PCVR -- Extrême & idem & 72,0 & 72 & environ 40~s de partie : aucune image perdue ; marge de 71 à 85~\% \\
-Quest -- Normal & \texttt{adb logcat}, VrApi & 72,5 & 71 & 85~s ; aucune seconde sous 70 ; temps GPU de l'appli
-  9,4~ms en moyenne (max 10,0) pour un budget de 13,9~ms ; GPU 81~\% (max 88~\%), CPU 23~\% ; 45~°C max \\
-Quest -- Menu & idem & 72,2 & 64 & 53~s ; une seule seconde sous 70 (64), juste après le chargement ; les
-  2 premières secondes de chargement (1 et 61 FPS) sont exclues \\
-Quest -- Extrême & -- & non mesuré & -- & journal de la session 1 perdu ; à mesurer \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-Note : le compteur VrApi compte les images par fenêtre d'une seconde. Une valeur de 73 sur un écran à
-72~Hz est un artefact de comptage, d'où une moyenne légèrement au-dessus de 72.
+Le journal confirme aussi la bonne variante d'effets sur chaque build (\texttt{[GameFX] variante
+utilisée : Quest} et \texttt{: PCVR}), sans exception ni crash. L'explosion à 3 touches, elle, n'apparaît
+dans aucun journal conservé : on n'y voit jamais plus de deux touches sur la même bombe. Le parcours que
+j'avais prévu la testait en Extrême, où l'on n'a qu'une vie, donc la partie s'arrête à
+la première touche. Il faudrait la tester en Facile (5 vies).
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.49\textwidth]{quest/quest_menu.jpg}\hfill
-\includegraphics[width=0.49\textwidth]{quest/quest_jeu_fruits.jpg}\\[3pt]
-\includegraphics[width=0.49\textwidth]{quest/quest_bombe.jpg}\hfill
-\includegraphics[width=0.49\textwidth]{quest/quest_pomme_doree.jpg}\\[3pt]
-\includegraphics[width=0.49\textwidth]{quest/quest_fin.jpg}
-\caption{Captures dans le Quest 3 (session sans câble). De gauche à droite et de haut en bas : menu,
-fruits en vol (score, minuteur, vies), bombe, pomme dorée (vies : 1), écran de fin (score 125, meilleur
-170, 16 fruits, 3 bombes). Ce sont des captures natives d'Horizon OS, en vue d'un seul œil (3840\,$\times$\,2160,
-réduites à 1920\,$\times$\,1080), et non des images stéréo. Le jus et l'explosion, qui durent moins
-d'une seconde, n'ont pas pu être capturés avec la combinaison de boutons.}
+\includegraphics[width=0.7\textwidth]{quest/quest_jeu_fruits.jpg}
+\caption{Capture prise dans le Quest 3 pendant une partie (vue d'un œil) : fruits en vol, score,
+minuteur et vies.}
 \label{fig:quest}
 \end{figure}
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.49\textwidth]{pcvr/pcvr_menu.jpg}\hfill
-\includegraphics[width=0.49\textwidth]{pcvr/pcvr_jus_orange.jpg}\\[3pt]
-\includegraphics[width=0.49\textwidth]{pcvr/pcvr_jus_pasteque_bombe.jpg}\hfill
-\includegraphics[width=0.49\textwidth]{pcvr/pcvr_jus_pomme.jpg}\\[3pt]
-\includegraphics[width=0.49\textwidth]{pcvr/pcvr_fin.jpg}\hfill
-\includegraphics[width=0.49\textwidth]{pcvr/pcvr_hud_link.jpg}
-\caption{Build PC via Link (fenêtre miroir du jeu, vue d'un œil). De gauche à droite et de haut en bas :
-menu, jus d'orange au moment de la coupe, jus de pastèque près d'une bombe, jus de pomme (morceaux
-coupés), écran de fin (score 595, 45 fruits, 3 bombes) et HUD de performance de Link capturé dans
-Oculus Mirror (72~Hz, 79~\% de marge).}
-\label{fig:pcvr}
-\end{figure}
+\paragraph{Un bug trouvé grâce aux tests.} Les deux journaux répétaient l'erreur \texttt{Tag: Slice is
+not defined} (42 fois sur le Quest, 122 sur le PC). Elle venait du script \texttt{DestroyFloor} du S7,
+qui testait les morceaux tombés au sol avec un tag qui n'existe pas. Rien ne se voyait en jeu, mais
+j'ai corrigé la ligne et refait les deux builds. Les tests au casque ont donc été faits avant ce
+correctif : le nouvel APK est installé, mais je ne l'ai pas relancé au casque ; son build s'est terminé
+sans erreur.
 
 % =====================================================================
-\section{Analyse de l'APK et comparaison des plateformes}
-\label{sec:apk}
+\section{L'APK, les tailles et la fluidité}
 
-\subsection{Tailles}
-
-L'APK a été ouvert dans l'APK Analyzer d'Android Studio 2026.2.2 (\emph{Build > Analyze APK}).
-Il affiche \textbf{APK size : 52.4 MB} et \textbf{Download Size : 47.4 MB} (figure~\ref{fig:apk1}). Ces
-« MB » sont des Mio : ils correspondent exactement aux 54,98~Mo et 49,71~Mo du tableau~\ref{tab:tailles}.
-La taille de téléchargement est celle que l'outil estime pour une distribution par un store.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.9\textwidth]{apk-analyzer/01-vue-ensemble.png}
-\caption{APK Analyzer, vue d'ensemble : le code natif (\texttt{lib}) représente 53,8\,\% du téléchargement,
-les données Unity (\texttt{assets}) 41,1\,\%.}
-\label{fig:apk1}
-\end{figure}
+\paragraph{Les tailles.} J'ai ouvert l'APK dans l'APK Analyzer d'Android Studio. Il affiche
+« APK size : 52.4 MB » et « Download Size : 47.4 MB ». Attention aux unités : ces « MB » sont en
+fait des Mio (1~Mio = $2^{20}$ octets), alors que mon tableau est en Mo ($10^6$ octets). 52,4~Mio font
+bien 54,98~Mo. La taille de téléchargement est une
+estimation de l'outil pour une distribution par un store.
 
 \begin{table}[H]
 \centering\small
-\caption{Tailles des builds (1 Mo = $10^6$ octets ; 1 Mio = $2^{20}$ octets).}
-\label{tab:tailles}
-\begin{tabularx}{\textwidth}{@{}Lrrr@{}}
+\caption{Tailles des builds finaux (1 Mo = $10^6$ octets).}
+\begin{tabularx}{\textwidth}{@{}Lrr@{}}
 \toprule
-Fichier & Octets & Mo & Mio \\
+Fichier & Octets & Mo \\
 \midrule
-APK Quest (taille brute) & 54\,977\,835 & 54,98 & 52,43 \\
-APK Quest, taille de téléchargement estimée & 49\,709\,272 & 49,71 & 47,41 \\
-Contenu de l'APK décompressé (538 entrées) & 149\,394\,197 & 149,39 & 142,47 \\
-ZIP Windows remis (sans symboles de débogage) & 71\,426\,270 & 71,43 & 68,12 \\
-Dossier Windows livré & 152\,105\,649 & 152,11 & 145,06 \\
+APK Quest & 54\,977\,835 & 54,98 \\
+APK, taille de téléchargement estimée & 49\,709\,272 & 49,71 \\
+Contenu de l'APK une fois décompressé & 149\,394\,197 & 149,39 \\
+ZIP du build Windows & 71\,426\,270 & 71,43 \\
+Dossier Windows livré & 152\,105\,649 & 152,11 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Les tailles du tableau sont celles des builds finaux, refaits après la correction de
-\texttt{DestroyFloor} (section~\ref{sec:tests}) et le retrait de l'outil MCP for Unity. Les captures de
-l'APK Analyzer et la taille de téléchargement viennent du build du 15/11. L'APK n'a varié que de
-224~octets (54\,978\,059 $\to$ 54\,977\,835), un écart négligeable qui ne change aucune valeur arrondie.
-Le dossier Windows a perdu 0,73~Mo (152,83 $\to$ 152,11~Mo) : la partie runtime de MCP for Unity
-était embarquée dans le build PC.
+Il faut comparer ce qui est comparable. Un APK est déjà une archive ZIP : je le compare donc au ZIP
+Windows, et son contenu décompressé au dossier Windows. L'APK réduit ses données à 36,8~\% de leur
+taille, le ZIP Windows seulement à 47,0~\%. Les textures PC sont déjà très denses et le build Windows
+contient en plus le moteur (\texttt{UnityPlayer.dll}) et les assemblies .NET.
 
-Un APK est une archive ZIP. Il faut donc comparer l'APK au ZIP Windows (deux archives) et le contenu
-de l'APK au dossier Windows (deux contenus décompressés). L'APK compresse à 36,8\,\% et le ZIP
-Windows à 47,0\,\% : les textures PC (BC) sont déjà denses et le build Windows livre en plus
-\texttt{UnityPlayer.dll} et les assemblies .NET.
-
-\subsection{Contenu de l'APK}
+Les captures de l'APK Analyzer viennent d'un build de la veille. Depuis, l'APK n'a changé que de
+224 octets, ce qui ne change rien aux valeurs arrondies. Le dossier Windows, lui, a perdu 0,73~Mo :
+j'utilisais pendant le développement un outil de pilotage de l'éditeur (MCP for Unity), et une petite
+partie de cet outil se retrouvait dans le build PC. Je l'ai retiré avant la remise.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth]{apk-analyzer/03-lib-arm64-v8a.png}
-\caption{\texttt{lib/arm64-v8a} : \texttt{libil2cpp.so} (15,4 Mio, 32\,\% du téléchargement) et
-\texttt{libunity.so} (9,1 Mio). L'avertissement d'alignement porte sur les deux bibliothèques OpenXR.}
-\label{fig:apk3}
+\includegraphics[width=0.88\textwidth]{apk-analyzer/01-vue-ensemble.png}
+\caption{APK Analyzer : le code natif (\texttt{lib}) fait 53,8~\% du téléchargement, les données Unity
+(\texttt{assets}) 41,1~\%.}
+\label{fig:apk}
 \end{figure}
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.49\textwidth,trim=0 0 525 0,clip]{apk-analyzer/02-assets-bin-data.png}\hfill
-\includegraphics[width=0.49\textwidth,trim=0 0 525 0,clip]{apk-analyzer/04-plus-gros-fichiers-donnees.png}
-\caption{\texttt{assets/bin/Data} déplié (gauche) : les données de la scène sont découpées par Unity en
-morceaux \texttt{sharedassets0.assets.splitN} de moins de 1 Mo. Plus gros fichier de données (droite) :
-\texttt{global-metadata.dat} d'IL2CPP (2,5 Mio).}
-\label{fig:apk2}
-\end{figure}
+\paragraph{Ce qui prend de la place.} Le plus gros poste est le code natif, environ la moitié de l'APK.
+Le fichier \fichier{libil2cpp.so} pèse 16,2~Mo compressé (64,8~Mo décompressé). Il ne contient pas seulement la quinzaine de scripts du jeu : il contient tout le C\# des
+paquets (XR Interaction Toolkit, Input System, URP\ldots), traduit en C++ par IL2CPP. Le
+\emph{stripping} est réglé sur « Minimal » ; un réglage plus fort réduirait ce fichier, mais risquerait
+de retirer du code que les paquets appellent par réflexion. Vient ensuite le moteur
+(\fichier{libunity.so}, 9,5~Mo). Côté données, les textures font 73,5~\% des assets du jeu sur Android.
+Le plus gros est le ciel HDR en 4K : 14,3~Mo en ASTC sur le Quest, contre 32,0~Mo en BC6H sur PC. Les
+meshes, les shaders et les sons pèsent peu. L'outil affiche aussi « Does not support 16 KB devices » :
+cela vient des deux bibliothèques OpenXR fournies par les paquets, que je ne peux pas modifier dans le
+projet. Je n'ai constaté aucun effet sur le Quest 3, mais c'est un point à surveiller.
+
+\paragraph{La fluidité.} Les deux builds tiennent les 72 images par seconde de l'écran. La différence
+se voit dans la marge qui reste.
 
 \begin{table}[H]
 \centering\small
-\caption{Principaux blocs de l'APK.}
-\begin{tabularx}{\textwidth}{@{}P{4.6cm}rrL@{}}
+\caption{FPS mesurés en jeu (écran à 72~Hz).}
+\begin{tabularx}{\textwidth}{@{}P{2.5cm}P{1.6cm}P{1.7cm}L@{}}
 \toprule
-Bloc & Compressé & Décompressé & Rôle \\
+Build, partie & Moyenne & Minimum & Remarques \\
 \midrule
-\fichier{lib/arm64-v8a/\allowbreak libil2cpp.so} & 16,2 Mo & 64,8 Mo & tout le C\# (jeu et paquets) converti en C++ et compilé en ARM64 \\
-\fichier{lib/arm64-v8a/\allowbreak libunity.so} & 9,5 Mo & 21,6 Mo & moteur Unity \\
-OpenXR (\fichier{libUnityOpenXR}, loader) & 0,9 Mo & 3,0 Mo & lien avec le runtime du Quest \\
-\textbf{Total \fichier{lib/}} & \textbf{27,2 Mo} & \textbf{91,3 Mo} & \\
-\fichier{sharedassets0.assets} (26 morceaux) & 12,7 Mo & 26,3 Mo & données de la scène : textures, meshes, matériaux, shaders \\
-\fichier{globalgamemanagers.assets} & 2,4 Mo & 6,0 Mo & réglages du projet, shaders toujours inclus \\
-\fichier{Managed/} (métadonnées IL2CPP) & 2,7 Mo & 10,2 Mo & noms des types et méthodes \\
-\fichier{Resources/} & 1,1 Mo & 4,3 Mo & ressources intégrées d'Unity \\
-\fichier{sharedassets0.resource} & 0,7 Mo & 0,7 Mo & audio (Vorbis), stocké sans compression \\
-\textbf{Total \fichier{assets/bin/Data}} & \textbf{20,9 Mo} & \textbf{51,2 Mo} & \\
-\fichier{classes.dex} & 6,4 Mo & 6,4 Mo & code Java de l'activité Unity \\
+Quest, Normal & 72,5 & 71 & 85~s, aucune seconde sous 70 ; GPU occupé à 81~\% (88~\% au plus), CPU à 23~\% \\
+Quest, Extrême & -- & -- & non mesuré (journal de la 1\textsuperscript{re} session perdu) \\
+PC, Normal & 72,0 & 72 & 38~s mesurées, 1 image perdue ; marge de 77 à 84~\% \\
+PC, Extrême & 72,0 & 72 & environ 40~s, aucune image perdue ; marge de 71 à 85~\% \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-{\sloppy Manifeste : package \texttt{com.JunghoonKIM.FruitNinjaVR}, version 0.1.0, \texttt{minSdkVersion} 29,
-\texttt{targetSdkVersion} 36, ABI \texttt{arm64-v8a} seule, fonctionnalités \texttt{vr.headtracking} et
-Vulkan ajoutées par Meta Quest Support.\par}
+Sur le Quest, la valeur 72,5 au-dessus de 72 vient de la façon dont le compteur découpe les secondes.
+Le GPU met 9,4~ms par image en moyenne (10,0~ms au plus), pour un budget de 13,9~ms à 72~Hz : il reste
+environ 28~\% de marge, et c'est bien le GPU qui limite, pas le CPU. Cela confirme qu'il fallait
+alléger les particules. La seule baisse vient du chargement : une seconde à 64~FPS juste avant le menu.
+Sur le PC, la RTX 3080 garde 71 à 85~\% de marge ; le seul creux, à 63~Hz, a lieu au retour au menu,
+hors partie. Le PC pourrait donc afficher les effets complets sans problème, alors que le Quest a
+besoin de sa version allégée.
 
-L'APK Analyzer signale aussi « Does not support 16 KB devices » : les deux bibliothèques OpenXR
-(\texttt{libUnityOpenXR.so}, \texttt{libopenxr\_loader.so}) sont alignées sur des pages de 4~Ko. Cela ne
-concerne que les appareils Android à pages de 16~Ko ; ces fichiers viennent des paquets et ne sont pas
-modifiables dans le projet. Point à surveiller, sans effet constaté à ce jour.
-
-\subsection{Ce qui occupe le plus de place}
-
-\begin{enumerate}
-\item \textbf{Le code natif} (49\,\% de l'APK) : \fichier{libil2cpp.so} contient le C\# de tous les paquets
-  (XR Interaction Toolkit, Input System, URP\ldots), pas seulement la quinzaine de scripts du jeu. Le
-  \emph{stripping} est au niveau « Minimal » ; un niveau plus élevé réduirait cette taille, au risque de
-  retirer du code appelé par réflexion.
-\item \textbf{Les textures} : 73,5\,\% des assets du jeu sur Android. Le plus gros asset est le ciel HDR
-  4K (\fichier{citrus\_orchard\_road\_puresky\_4k.exr}) : 14,3 Mo en ASTC contre 32,0 Mo en BC6H sur PC.
-\item Meshes (4,4 Mo, surtout le décor du dojo), shaders et sons : faibles.
-\end{enumerate}
-
-APK Analyzer voit les fichiers de l'archive, pas les assets Unity : la répartition par type vient du
-rapport de build d'Unity (tableau~\ref{tab:types}).
-
-\begin{table}[H]
-\centering\small
-\caption{Assets du jeu par catégorie (rapport de build Unity, décompressé).}
-\label{tab:types}
-\begin{tabular}{@{}lrr@{}}
-\toprule
-Catégorie & Quest (Android) & Windows \\
-\midrule
-Textures & 25,5 Mo (73,5\,\%) & 46,1 Mo (84,3\,\%) \\
-Meshes & 4,4 Mo (12,6\,\%) & 4,4 Mo (8,0\,\%) \\
-Shaders & 2,4 Mo (6,9\,\%) & 1,8 Mo (3,4\,\%) \\
-Sons & 0,7 Mo (2,0\,\%) & 0,7 Mo (1,2\,\%) \\
-Autres & 1,3 Mo (3,6\,\%) & 1,3 Mo (2,3\,\%) \\
-\midrule
-\textbf{Total} & \textbf{34,7 Mo} & \textbf{54,7 Mo} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Qualité et fluidité}
-
-Choix faits pour le Quest : effets allégés (environ quatre fois moins de particules, sans collision ni
-soft particles), qualité \texttt{Mobile} (MSAA 4x, sans HDR ni post-process), textures ASTC. Le rendu Quest
-est donc plus plat (pas de bloom ni d'occlusion ambiante) mais garde des effets lisibles
-(figure~\ref{fig:fx}).
-
-\paragraph{Fluidité mesurée sur le Quest.} Sur la partie Normal jouée sans câble, le Quest tient la
-fréquence de l'écran : 72,5~FPS en moyenne, 71 au minimum, aucune seconde sous 70 sur 85~s, alors que le
-joueur coupait des fruits et touchait des bombes. Le temps GPU de l'application vaut 9,4~ms en moyenne
-(10,0~ms au maximum), contre un budget de 13,9~ms par image à 72~Hz : il reste environ 28~\% de marge.
-C'est le GPU qui limite : 81~\% d'utilisation en moyenne (88~\% au maximum), contre 23~\% pour le CPU,
-avec un niveau d'horloge GPU de 3 (champ \texttt{CPU4/GPU=2/3} de VrApi). Cela confirme le choix de réduire d'abord l'\emph{overdraw} des
-particules. La seule chute vient du chargement initial (une seconde à 64~FPS juste après l'ouverture,
-avant le menu), pas des coupes. À 90~Hz (budget de 11,1~ms), la marge tomberait à environ 10~\% au pire
-moment mesuré : le passage serait possible, mais il faudrait le vérifier au casque. Le jeu tourne à 72~Hz,
-la fréquence par défaut des applications.
-Le joueur n'a signalé ni saccade ni problème de lisibilité. La partie Extrême n'a pas été mesurée.
-
-\paragraph{Comparaison PC / Quest.} Les deux builds tiennent 72~images/s en jeu. Les marges, en
-revanche, n'ont rien à voir. Sur le PC (RTX 3080), le HUD de Link indique 71 à 85~\% de marge de
-performance, et l'application n'a perdu qu'une image en 38~s de partie Normal, aucune en Extrême. La
-seule baisse (63~Hz) a lieu au retour au menu, hors du jeu. Sur le Quest, le GPU est occupé à 81~\% et
-la marge n'est que d'environ 28~\% du budget d'image. Les effets allégés de la variante Quest
-(4 à 4,6 fois moins de particules, sans collision) sont donc nécessaires : ce sont eux qui gardent cette
-marge, alors que le PC pourrait afficher la variante complète sans difficulté.
-
-Pour la qualité visuelle, les captures (figures~\ref{fig:quest} et~\ref{fig:pcvr}) montrent le même
-décor et la même UI. Le PC ajoute l'éclairage HDR, le post-process et des jus plus denses : gouttes
-étirées, éclats colorés bien visibles au moment de la coupe. Le Quest garde un rendu plus plat, mais
-reste lisible. Les textes de l'UI (score, minuteur, vies) sont petits sur les deux builds et sont lus
-sans difficulté au casque selon le joueur. La latence mouvement-photon de Link (environ 43~ms) est
-propre au streaming par câble ; elle n'existe pas en autonome.
+À l'œil, les deux versions montrent le même décor et la même interface. Le PC a en plus l'éclairage
+HDR, le post-process et des jus plus fournis. Le Quest est plus plat, mais les effets restent lisibles
+et le joueur n'a signalé ni saccade ni texte illisible. Via Link, la latence mouvement-photon est
+d'environ 43~ms ; c'est propre au streaming et n'existe pas en autonome.
 
 % =====================================================================
-\section{Difficultés, solutions et limitations}
-\label{sec:difficultes}
+\section{Difficultés, limites et bilan}
 
-\begin{table}[H]
-\centering\small
-\caption{Difficultés rencontrées et solutions.}
-\begin{tabularx}{\textwidth}{@{}P{4.2cm}L@{}}
-\toprule
-Difficulté & Solution appliquée \\
-\midrule
-Version de l'éditeur S7 (6000.0.56f1) absente du poste & installation de cette version exacte avec Android et Windows Build Support, pour éviter une mise à jour du projet \\
-Aucune configuration XR Android dans le projet S7 & loader OpenXR, Meta Quest Support et profils de manettes activés pour Android \\
-Fichiers C\# dont le nom ne correspondait pas à la classe & renommage par l'éditeur (\fichier{FruitSpawner.cs}, \fichier{DestroyFloor.cs}) \\
-Fonctions annoncées en S7 absentes du code (volume, entraînement, classement, JSON) & constat documenté, non recréées ; fruit bonus ajouté car prévu par le jeu \\
-« Active Input Handling = Both » non supporté sur Android & passage à Input System seul ; raccourcis de débogage portés sur \texttt{Keyboard.current} / \texttt{Mouse.current} \\
-Build Android : « Failed to update Android SDK » & cause : \fichier{C:\textbackslash Windows\textbackslash System32} absent du PATH du poste, donc \fichier{sdkmanager.bat} ne trouve pas \texttt{findstr}. Build relancé avec System32 ajouté au PATH du seul processus Unity ; PATH du poste à corriger \\
-Plateforme SDK 32 non installée (cible API 32) & cible « Automatic (highest installed) » = API 36 ; le SDK d'Unity, sous \fichier{Program Files}, n'est pas modifiable sans droits administrateur \\
-Explosion additive peu lisible sur Quest (sans HDR) & boule de feu en alpha blend, particules plus grosses \\
-Outil de pilotage de l'éditeur (MCP for Unity) utilisé pendant le développement & paquet isolé dans un commit séparé, retiré avant la remise par \texttt{git revert} de ce commit ; builds refaits ensuite \\
-\bottomrule
-Tests Quest : la liaison adb par USB tombait sans arrêt pendant que Meta Horizon Link était ouvert sur le PC & test Quest refait sans câble, journal lu ensuite en rebranchant \\
-Journal du casque écrasé en quelques minutes (tampon de 256~Kio) & \texttt{adb logcat -G 16M} avant la session \\
-\texttt{adb exec-out screencap} : images noires dans le jeu & captures natives d'Horizon OS (bouton Meta + gâchette), récupérées par \texttt{adb pull} \\
-FPS du build PC sans outil d'enregistrement & HUD de performance de Link activé par \texttt{OculusDebugToolCLI}, capturé toutes les 2~s dans Oculus Mirror \\
-Erreur \texttt{Tag: Slice is not defined} répétée dans les deux builds & \texttt{DestroyFloor} : \texttt{CompareTag} remplacé par une comparaison directe du tag ; builds refaits \\
-\bottomrule
-\end{tabularx}
-\end{table}
+\paragraph{Ce qui m'a bloqué.} Le build Android échouait avec « Failed to update Android SDK ». La cause : \fichier{C:\textbackslash Windows\textbackslash System32} manquait
+dans le PATH du poste : l'outil du SDK ne trouvait pas la commande \texttt{findstr}. J'ai lancé Unity
+avec un PATH corrigé ; le PATH du poste reste à réparer. Le SDK 32 demandé par le projet n'était pas
+installé, et le SDK d'Unity, sous \fichier{Program Files}, n'est pas modifiable sans droits
+administrateur : j'ai mis la cible Android sur « Automatic », soit l'API 36. Pendant les tests, il y a
+eu la connexion adb qui tombait à cause de Link, le journal du casque trop petit (256~Kio, écrasé en
+quelques minutes) et les captures adb noires ; je les ai contournés comme décrit plus haut.
 
-\textbf{Limitations restantes}
+\paragraph{Limites que je laisse.}
 \begin{itemize}
-\item Le bouton Quitter du menu réagit au contact des katanas. Pendant le test PC, le jeu s'est fermé
-  après une partie, en revenant au menu (contacts \texttt{QuitButton} dans le journal). Un fruit tranché
-  près du menu ou un geste ample suffit à quitter par mégarde.
-\item Grande explosion à 3 touches non confirmée : aucun journal conservé ne la contient, sur aucun
-  des deux builds. En Extrême, la partie s'arrête à la 1\textsuperscript{re} touche (1 vie) ; il faut
-  la tester en Facile (5 vies).
-\item Tests : la grille est déclarative (retour du joueur), complétée par les journaux. Les FPS du
-  Quest en Extrême n'ont pas été mesurés (section~\ref{sec:tests}).
-\item Les tests au casque ont été faits sur le build d'avant la correction de \texttt{DestroyFloor}.
-  Le nouvel APK est installé ; son démarrage au casque n'a pas été revérifié après le correctif ;
-  le build s'est terminé sans erreur.
-\item Volume, mode entraînement, classement et sauvegarde JSON absents (hérités de S7).
-\item Rig S7 conservé (\texttt{TrackedPoseDriver} legacy, déprécié) plutôt qu'un XR Origin.
-\item Paramètres Android issus des recommandations de Meta, à confirmer avec ceux du cours.
-\item Objets de test S7 et \texttt{Debug.Log} encore présents dans la scène.
-\item Ciel HDR en 4K : premier poste à réduire si la taille de l'APK ou la mémoire posent problème.
+\item La grande explosion à 3 touches n'est pas confirmée par les journaux, et les FPS du Quest en
+  Extrême n'ont pas été mesurés.
+\item Le dernier APK, avec le correctif de \texttt{DestroyFloor}, est installé mais n'a pas été relancé
+  au casque.
+\item Le bouton Quitter du menu réagit au contact des katanas : pendant le test PC, le jeu s'est fermé
+  après un retour au menu.
+\item Volume, mode entraînement, classement et sauvegarde JSON restent absents, comme dans la version S7.
+\item Le rig legacy du S7 est conservé, les réglages Android sont à confronter à ceux du cours, et il
+  reste des objets de test et des \texttt{Debug.Log} dans la scène.
+\item Le ciel HDR en 4K est le premier poste à réduire si la taille de l'APK ou la mémoire posent problème.
 \end{itemize}
+
+\paragraph{Conclusion : ce que j'en retiens.} D'abord, qu'il faut mesurer sur le casque plutôt que
+deviner. Le Quest tient 72~FPS, mais avec une marge d'environ
+28~\% seulement, et c'est le GPU qui limite. Sans les effets allégés, cette marge
+aurait fondu. J'ai aussi compris pourquoi il faut déplacer les assets depuis l'éditeur et pas depuis
+l'explorateur, et pourquoi une taille d'APK se lit avec ses unités et en comparant des archives entre
+elles. Enfin, les journaux m'ont été très utiles : c'est grâce à eux que j'ai trouvé le bug du tag
+\texttt{Slice}, qui ne se voyait pas en jeu.
+
+\paragraph{Ce que je ferais autrement.} Je préparerais les mesures avant de jouer : journal du casque
+agrandi dès le début, HUD de Link prêt, et un parcours de test pensé pour chaque point (l'explosion à
+3 touches en Facile, pas en Extrême). Je ferais aussi tous les tests sur le build final, pour ne pas
+avoir un correctif non revérifié au casque. Enfin, je retirerais plus tôt les outils de développement
+du projet, puisque l'un d'eux s'était glissé dans le build PC.
 
 \end{document}
