@@ -81,6 +81,27 @@ n'a aucune *render feature*.
 | Build Android : échec Gradle « Failed to install the following SDK components » (Android SDK Platform 32) | cible API passée à « Automatic (highest installed) » (36) |
 | Build Android : « Failed to update Android SDK » (version des platform-tools lue 0.0) | cause : `C:\Windows\System32` absent du PATH du poste, donc `sdkmanager.bat` ne trouve pas `findstr`. Le build a été relancé avec System32 ajouté au PATH du seul processus Unity. **À corriger sur le poste** pour builder depuis l'éditeur (voir le rapport) |
 
+## Casque de test (relevé par adb le 16/11/2026)
+
+| Élément | Valeur | Source |
+|---|---|---|
+| Modèle | Meta Quest 3 (`eureka`) | `ro.product.model`, `adb devices -l` |
+| Android | 14 (API 34), build `UP1A.231005.007.A1`, incrémentale `52270740038100520` | `ro.build.display.id`, `ro.build.version.*` |
+| Correctif de sécurité | 2026-06-01 ; build système du 02/07/2026 | `ro.build.version.security_patch`, `ro.build.date` |
+| Meta Horizon OS | v205 (Horizon UI `205.0.0.112.1674`), API OVR 160 | `ro.vros.build.version`, `com.oculus.systemux`, `ro.ovr.os.api.version` |
+| Batterie au début du test | 97 %, en charge sur secteur (câble USB-C branché) | `dumpsys battery` |
+| Panneau | 4128 × 2208 (deux yeux, soit 2064 × 2208 par œil) | `dumpsys display` |
+| Fréquences d'affichage | 72 à 120 Hz ; 72 Hz actif au moment du relevé (90 Hz par défaut du système) | `dumpsys display` |
+| Paquet installé | `com.JunghoonKIM.FruitNinjaVR` (`adb install -r`, « Success ») | `pm list packages` |
+
+Au lancement par adb sans manette active, Horizon OS bloque l'application (dialogue
+`app_launch_blocked_controller_required`) : il faut allumer les manettes avant.
+
 ## Tests
 
-**Aucun build n'a été testé dans le casque à ce jour.** Procédure et grille : `docs/checklist-casque.md`.
+Procédure et grille : `docs/checklist-casque.md`. Log du test Quest : `docs/tests/quest-logcat.txt`.
+
+- **Quest (16/11/2026)** : testé dans le casque, y compris en autonome sans câble. Grille OK ; partie
+  Normal à 72,5 FPS en moyenne et 71 au minimum (écran à 72 Hz) ; variante d'effets Quest confirmée ;
+  aucune exception ni crash.
+- **PC (Meta Quest Link)** : pas encore testé.

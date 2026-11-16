@@ -38,24 +38,37 @@ Cocher OK / KO et noter les remarques.
 
 | # | Élément | Vérification | PCVR | Quest |
 |---|---|---|---|---|
-| 1 | Chargement | l'application démarre sans écran noir ni crash ; temps de chargement | | |
-| 2 | Tracking casque | la vue suit la tête ; hauteur des yeux correcte, sol à la bonne hauteur | | |
-| 3 | Tracking manettes | les deux manettes suivies, sans retard ni décalage d'orientation | | |
-| 4 | Sabres | un katana dans chaque main, bien orienté | | |
-| 5 | Menu | rayon visible sur la manette droite ; la **gâchette droite** valide Start, la difficulté, Retour | | |
-| 6 | Lancement des fruits | fruits lancés depuis les 4 points, atteignables | | |
-| 7 | Coupe | un geste rapide coupe le fruit en deux, son de coupe, +10 points | | |
-| 8 | Effet jus | éclaboussure au point de coupe, couleur du fruit | | |
-| 9 | Combo | 3 fruits en moins de 2 s → +50, texte « Combo » | | |
-| 10 | Fruit bonus | pomme dorée (rare) → +50 points | | |
-| 11 | Bombe touchée | son, −25 points, −1 vie, petite explosion de particules | | |
-| 12 | Explosion | 3e touche : tremblement, grande explosion de particules, flash, son | | |
-| 13 | Fin de partie | à 0 vie ou à 120 s : score, meilleur score, fruits, bombes ; Rejouer et Menu | | |
-| 14 | Difficultés | Facile (5 vies) et Extrême (1 vie) changent vies, cadence et bombes | | |
-| 15 | Lisibilité | textes de l'UI lisibles, effets visibles sans gêner | | |
-| 16 | Fluidité | pas de saccade lors des coupes multiples et des explosions | | |
-| 17 | FPS | moyenne / minimum, outil et conditions | | |
-| 18 | Stabilité | 2 parties complètes sans crash ni blocage | | |
+| 1 | Chargement | l'application démarre sans écran noir ni crash ; temps de chargement | | OK |
+| 2 | Tracking casque | la vue suit la tête ; hauteur des yeux correcte, sol à la bonne hauteur | | OK |
+| 3 | Tracking manettes | les deux manettes suivies, sans retard ni décalage d'orientation | | OK |
+| 4 | Sabres | un katana dans chaque main, bien orienté | | OK |
+| 5 | Menu | rayon visible sur la manette droite ; la **gâchette droite** valide Start, la difficulté, Retour | | OK |
+| 6 | Lancement des fruits | fruits lancés depuis les 4 points, atteignables | | OK |
+| 7 | Coupe | un geste rapide coupe le fruit en deux, son de coupe, +10 points | | OK |
+| 8 | Effet jus | éclaboussure au point de coupe, couleur du fruit | | OK |
+| 9 | Combo | 3 fruits en moins de 2 s → +50, texte « Combo » | | OK |
+| 10 | Fruit bonus | pomme dorée (rare) → +50 points | | OK (vue) |
+| 11 | Bombe touchée | son, −25 points, −1 vie, petite explosion de particules | | OK |
+| 12 | Explosion | 3e touche : tremblement, grande explosion de particules, flash, son | | OK |
+| 13 | Fin de partie | à 0 vie ou à 120 s : score, meilleur score, fruits, bombes ; Rejouer et Menu | | OK |
+| 14 | Difficultés | Facile (5 vies) et Extrême (1 vie) changent vies, cadence et bombes | | OK |
+| 15 | Lisibilité | textes de l'UI lisibles, effets visibles sans gêner | | OK |
+| 16 | Fluidité | pas de saccade lors des coupes multiples et des explosions | | OK |
+| 17 | FPS | moyenne / minimum, outil et conditions | | 72,5 / 71 (Normal, VrApi, 72 Hz, sans câble) ; Extrême non mesuré |
+| 18 | Stabilité | 2 parties complètes sans crash ni blocage | | OK |
+| 19 | Autonomie | build Quest joué sans câble ni PC | – | OK |
+
+Résultats Quest (16/11/2026, Quest 3, Horizon OS v205) : retour du joueur « tout OK ». Mesures et
+journal de la session sans câble dans `docs/tests/quest-logcat.txt`, captures dans `docs/captures/quest/`,
+analyse dans le rapport (section Résultats des tests). Erreur relevée sans effet visible :
+`Tag: Slice is not defined` (script `DestroyFloor`).
+
+Remarques pratiques :
+- Avec Meta Horizon Link ouvert sur le PC, la liaison adb par USB tombe sans arrêt. Tester le Quest sans
+  câble, puis rebrancher pour lire le journal.
+- Avant la session, `adb logcat -G 16M` : le tampon par défaut (256 Kio) est écrasé en quelques minutes.
+- `adb exec-out screencap` donne des images noires dans le jeu. Utiliser les captures natives
+  (bouton Meta + gâchette), puis `adb pull /sdcard/Oculus/Screenshots/`.
 
 Fonctions S7 absentes, donc non testables : réglage du volume, mode entraînement, classement, sauvegarde
 JSON (voir `docs/etat-initial.md`).

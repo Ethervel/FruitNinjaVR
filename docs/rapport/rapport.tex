@@ -52,10 +52,10 @@
   {\small Unity 6000.0.56f1 -- URP 17.0.4 -- OpenXR 1.15.1 -- XR Interaction Toolkit 3.0.8}
 \end{center}
 
-\begin{afaire}[Premier jet -- tests au casque à compléter]
-Aucun build n'a encore été testé dans le casque. Les résultats de la section~\ref{sec:tests}
-(grille de test, FPS, captures casque) sont laissés vides et seront remplis après les tests.
-Les captures d'effets de la section~\ref{sec:fx} sont des rendus de l'éditeur.
+\begin{afaire}[Version de travail -- test PC à compléter]
+Le build Quest a été testé dans le casque (Meta Quest 3, en autonome ; section~\ref{sec:tests}). Le build
+PC (Meta Quest Link) n'a pas encore été testé : sa colonne de la grille et ses FPS restent vides. Les
+captures d'effets de la section~\ref{sec:fx} sont des rendus de l'éditeur.
 \end{afaire}
 
 \tableofcontents
@@ -240,8 +240,8 @@ captures dans le casque.
 \end{figure}
 
 Mesuré : nombre de particules ($\div 4$ pour le jus, $\div 4{,}6$ pour l'explosion), nombre de
-sous-systèmes (2$\to$1 et 4$\to$3), modules coûteux retirés. L'effet sur les FPS reste à mesurer au
-casque (section~\ref{sec:tests}).
+sous-systèmes (2$\to$1 et 4$\to$3), modules coûteux retirés. Au casque, la partie Normal sur le Quest reste à
+72~FPS, avec des coupes et des bombes (section~\ref{sec:tests}).
 
 % =====================================================================
 \section{Configuration des builds, matériel et tests}
@@ -287,81 +287,112 @@ Android (SSAO), qui est un faux positif : le SSAO n'existe que dans le renderer 
 
 \begin{itemize}
 \item PC : Windows 11, Intel i9-14900KF, NVIDIA RTX 3080, 32 Go de RAM.
-\item Casque : Meta Quest 3 ; en PCVR, relié par Meta Quest Link (runtime OpenXR actif).
-  % TODO : version du système du Quest, version de Meta Quest Link, câble ou Air Link.
-\item Outils de mesure prévus : OVR Metrics Tool (Quest), overlay de performance de Meta Quest Link (PC).
+\item Casque : Meta Quest 3, Meta Horizon OS v205 (Android 14, API 34, build \texttt{UP1A.231005.007.A1},
+  correctif de sécurité du 01/06/2026), écran 4128\,$\times$\,2208 (deux yeux), 72~Hz pendant le test.
+\item PCVR : Meta Horizon Link installé sur le PC, service \texttt{OVRService} actif, runtime OpenXR actif
+  = Meta (\texttt{oculus\_openxr\_64.json}). % TODO : version de Link, câble ou Air Link.
+\item Mesure des FPS sur le Quest : statistiques du compositeur Meta (lignes \texttt{VrApi} du journal
+  \texttt{adb logcat}, une ligne par seconde : images affichées, temps GPU de l'application, charge CPU/GPU,
+  température). OVR Metrics Tool n'était pas installé et n'a pas été nécessaire.
 \end{itemize}
 
 \subsection{Résultats des tests}
 \label{sec:tests}
 
-\begin{tcolorbox}[colback=red!6,colframe=red!60!black,fonttitle=\bfseries\large,
-  title={Tests au casque à compléter},boxrule=1.2pt]
-Les deux builds n'ont pas encore été testés dans le casque. La grille ci-dessous, les FPS et les captures
-seront remplis après les tests (procédure : \fichier{docs/checklist-casque.md}). Aucun résultat n'est
-indiqué tant qu'il n'a pas été observé.
-\end{tcolorbox}
+\paragraph{Déroulement (Quest).} Le 16/11/2026, l'APK a été installée par \texttt{adb install -r}
+(paquet \texttt{com.JunghoonKIM.FruitNinjaVR}). Il y a eu deux sessions.
+\begin{itemize}
+\item \textbf{Session 1, câble USB branché} (5~min~16~s de jeu). La liaison adb tombait sans cesse, car
+  Meta Horizon Link, ouvert sur le PC, se connecte au casque par le même câble. Seul le démarrage a pu être
+  enregistré ; la capture d'écran par \texttt{adb exec-out screencap} ne donnait que des images noires.
+  Le journal interne du casque (256~Kio) avait déjà écrasé la partie.
+\item \textbf{Session 2, autonome, sans câble} (2~min~38~s de jeu, dont une partie complète en Normal de
+  85~s). Le tampon du journal a été agrandi au préalable (\texttt{adb logcat -G 16M}), puis lu après la
+  session en rebranchant le câble. Le joueur a pris les captures lui-même (bouton Meta + gâchette).
+\end{itemize}
+La grille reprend le retour du joueur (« tout OK ») sur les deux sessions. Les points vérifiés aussi
+dans le journal de la session 2 sont signalés par (j). Le journal filtré est versionné dans
+\fichier{docs/tests/quest-logcat.txt}.
 
 \begin{table}[H]
 \centering\small
-\caption{Parcours de test (OK / KO et remarques).}
-\begin{tabularx}{\textwidth}{@{}r P{2.6cm} L P{1.9cm} P{1.9cm}@{}}
+\caption{Parcours de test (OK / KO et remarques). (j) : confirmé aussi par le journal du Quest.}
+\begin{tabularx}{\textwidth}{@{}r P{2.6cm} L P{1.9cm} P{2.3cm}@{}}
 \toprule
 \# & Élément & Vérification & PCVR & Quest \\
 \midrule
-1 & Chargement & démarrage sans écran noir ni crash ; temps de chargement & & \\
-2 & Tracking casque & la vue suit la tête ; hauteur des yeux, sol & & \\
-3 & Tracking manettes & deux manettes suivies sans retard ni décalage & & \\
-4 & Sabres & un katana dans chaque main, bien orienté & & \\
-5 & Menu & rayon de la manette droite ; gâchette : Start, difficulté, Retour & & \\
-6 & Lancement & fruits lancés depuis les 4 points, atteignables & & \\
-7 & Coupe & geste rapide : fruit coupé, son, +10 points & & \\
-8 & Effet jus & éclaboussure au point de coupe, couleur du fruit & & \\
-9 & Combo & 3 fruits en moins de 2 s : +50, texte « Combo » & & \\
-10 & Fruit bonus & pomme dorée : +50 points & & \\
-11 & Bombe touchée & son, $-25$ points, $-1$ vie, petite explosion & & \\
-12 & Explosion & 3\textsuperscript{e} touche : tremblement, explosion, flash, son & & \\
-13 & Fin de partie & score, meilleur score, fruits, bombes ; Rejouer, Menu & & \\
-14 & Difficultés & Facile et Extrême changent vies, cadence, bombes & & \\
-15 & Lisibilité & UI lisible, effets visibles sans gêner & & \\
-16 & Fluidité & pas de saccade lors des coupes et explosions & & \\
-17 & FPS & moyenne / minimum (voir tableau suivant) & & \\
-18 & Stabilité & 2 parties complètes sans crash ni blocage & & \\
+1 & Chargement & démarrage sans écran noir ni crash ; temps de chargement & & OK (j) \\
+2 & Tracking casque & la vue suit la tête ; hauteur des yeux, sol & & OK \\
+3 & Tracking manettes & deux manettes suivies sans retard ni décalage & & OK \\
+4 & Sabres & un katana dans chaque main, bien orienté & & OK \\
+5 & Menu & rayon de la manette droite ; gâchette : Start, difficulté, Retour & & OK \\
+6 & Lancement & fruits lancés depuis les 4 points, atteignables & & OK \\
+7 & Coupe & geste rapide : fruit coupé, son, +10 points & & OK (j) \\
+8 & Effet jus & éclaboussure au point de coupe, couleur du fruit & & OK \\
+9 & Combo & 3 fruits en moins de 2 s : +50, texte « Combo » & & OK \\
+10 & Fruit bonus & pomme dorée : +50 points & & OK (vue) \\
+11 & Bombe touchée & son, $-25$ points, $-1$ vie, petite explosion & & OK (j) \\
+12 & Explosion & 3\textsuperscript{e} touche : tremblement, explosion, flash, son & & OK \\
+13 & Fin de partie & score, meilleur score, fruits, bombes ; Rejouer, Menu & & OK (j) \\
+14 & Difficultés & Facile et Extrême changent vies, cadence, bombes & & OK \\
+15 & Lisibilité & UI lisible, effets visibles sans gêner & & OK \\
+16 & Fluidité & pas de saccade lors des coupes et explosions & & OK \\
+17 & FPS & moyenne / minimum (voir tableau suivant) & & 72,5 / 71 (Normal) \\
+18 & Stabilité & 2 parties complètes sans crash ni blocage & & OK \\
+19 & Autonomie & build Quest joué sans câble ni PC & -- & OK (j) \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
+Le journal de la session 2 confirme : la variante d'effets \texttt{[GameFX] variante utilisée : Quest
+(FX\_FruitJuice\_Quest, FX\_BombExplosion\_Quest)} ; une partie Normal à 3 vies (16 fruits coupés,
+3 touches de bombe, fin à 0 vie) ; aucune exception ni crash (le tampon \texttt{crash} du casque est vide),
+et une fermeture normale du processus. Une erreur répétée est relevée, sans effet visible :
+\texttt{Tag: Slice is not defined} (42 fois). Le script S7 \texttt{DestroyFloor} compare les morceaux
+tombés au sol à un tag \texttt{Slice} qui n'existe pas dans le projet ; l'objet est quand même détruit
+par la vérification de nom qui suit. Correction possible : ajouter le tag ou le retirer de la liste du
+composant. Le journal ne contient ni la partie Extrême ni l'explosion à 3 touches : ils ont été joués
+pendant la session 1, dont le journal est perdu.
+
 \begin{table}[H]
 \centering\small
-\caption{Fluidité mesurée (partie en difficulté Normal puis Extrême).}
-\begin{tabularx}{\textwidth}{@{}lLLLL@{}}
+\caption{Fluidité mesurée. Quest : lignes \texttt{VrApi} du compositeur, une par seconde, écran à 72~Hz,
+session 2 sans câble.}
+\begin{tabularx}{\textwidth}{@{}P{2.4cm}P{2.6cm}P{1.5cm}P{1.6cm}L@{}}
 \toprule
 Build & Outil & FPS moyen & FPS minimum & Remarques (CPU/GPU, saccades) \\
 \midrule
 PCVR -- Normal & & & & \\
 PCVR -- Extrême & & & & \\
-Quest -- Normal & & & & \\
-Quest -- Extrême & & & & \\
+Quest -- Normal & \texttt{adb logcat}, VrApi & 72,5 & 71 & 85~s ; aucune seconde sous 70 ; temps GPU de l'appli
+  9,4~ms en moyenne (max 10,0) pour un budget de 13,9~ms ; GPU 81~\% (max 88~\%), CPU 23~\% ; 45~°C max \\
+Quest -- Menu & idem & 72,2 & 64 & 53~s ; une seule seconde sous 70 (64), juste après le chargement ; les
+  2 premières secondes de chargement (1 et 61 FPS) sont exclues \\
+Quest -- Extrême & -- & non mesuré & -- & journal de la session 1 perdu ; à mesurer \\
 \bottomrule
 \end{tabularx}
 \end{table}
-% TODO après les tests : remplir les deux tableaux ci-dessus (outil : Meta Quest Link Performance
-% Overlay pour le PC, OVR Metrics Tool pour le Quest) et ajouter les captures casque ci-dessous.
-% Captures Quest : adb exec-out screencap -p > docs/captures/quest_<nom>.png
-% Captures PC : capture du miroir de Meta Quest Link -> docs/captures/pcvr_<nom>.png
-%
-% \begin{figure}[H]
-% \centering
-% \includegraphics[width=0.485\textwidth]{pcvr_jus.png}\hfill
-% \includegraphics[width=0.485\textwidth]{quest_jus.png}
-% \caption{Effet jus dans le casque : PCVR (gauche), Quest (droite).}
-% \end{figure}
-% \begin{figure}[H]
-% \centering
-% \includegraphics[width=0.485\textwidth]{pcvr_explosion.png}\hfill
-% \includegraphics[width=0.485\textwidth]{quest_explosion.png}
-% \caption{Explosion dans le casque : PCVR (gauche), Quest (droite).}
-% \end{figure}
+
+Note : le compteur VrApi compte les images par fenêtre d'une seconde. Une valeur de 73 sur un écran à
+72~Hz est un artefact de comptage, d'où une moyenne légèrement au-dessus de 72.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.49\textwidth]{quest/quest_menu.jpg}\hfill
+\includegraphics[width=0.49\textwidth]{quest/quest_jeu_fruits.jpg}\\[3pt]
+\includegraphics[width=0.49\textwidth]{quest/quest_bombe.jpg}\hfill
+\includegraphics[width=0.49\textwidth]{quest/quest_pomme_doree.jpg}\\[3pt]
+\includegraphics[width=0.49\textwidth]{quest/quest_fin.jpg}
+\caption{Captures dans le Quest 3 (session sans câble). De gauche à droite et de haut en bas : menu,
+fruits en vol (score, minuteur, vies), bombe, pomme dorée (vies : 1), écran de fin (score 125, meilleur
+170, 16 fruits, 3 bombes). Ce sont des captures natives d'Horizon OS, en vue d'un seul œil (3840\,$\times$\,2160,
+réduites à 1920\,$\times$\,1080), et non des images stéréo. Le jus et l'explosion, qui durent moins
+d'une seconde, n'ont pas pu être capturés avec la combinaison de boutons.}
+\label{fig:quest}
+\end{figure}
+
+% TODO test PC : remplir la colonne PCVR, les lignes PCVR du tableau des FPS (overlay de performance de
+% Link) et ajouter les captures du miroir (docs/captures/pcvr_<nom>.png).
 
 % =====================================================================
 \section{Analyse de l'APK et comparaison des plateformes}
@@ -496,11 +527,21 @@ soft particles), qualité \texttt{Mobile} (MSAA 4x, sans HDR ni post-process), t
 est donc plus plat (pas de bloom ni d'occlusion ambiante) mais garde des effets lisibles
 (figure~\ref{fig:fx}).
 
-\begin{afaire}[À compléter après les tests au casque]
-Comparaison observée de la qualité des effets, de la lisibilité et de la fluidité (FPS) entre PCVR et
-Quest, à partir des tableaux de la section~\ref{sec:tests}.
+\paragraph{Fluidité mesurée sur le Quest.} Sur la partie Normal jouée sans câble, le Quest tient la
+fréquence de l'écran : 72,5~FPS en moyenne, 71 au minimum, aucune seconde sous 70 sur 85~s, alors que le
+joueur coupait des fruits et touchait des bombes. Le temps GPU de l'application vaut 9,4~ms en moyenne
+(10,0~ms au maximum), contre un budget de 13,9~ms par image à 72~Hz : il reste environ 28~\% de marge.
+C'est le GPU qui limite : 81~\% d'utilisation en moyenne (88~\% au maximum), contre 23~\% pour le CPU,
+avec un niveau d'horloge GPU de 3 (champ \texttt{CPU4/GPU=2/3} de VrApi). Cela confirme le choix de réduire d'abord l'\emph{overdraw} des
+particules. La seule chute vient du chargement initial (une seconde à 64~FPS juste après l'ouverture,
+avant le menu), pas des coupes. À 90~Hz (budget de 11,1~ms), la marge tomberait à environ 10~\% au pire
+moment mesuré : le passage serait possible, mais il faudrait le vérifier au casque. Le jeu tourne à 72~Hz,
+la fréquence par défaut des applications.
+Le joueur n'a signalé ni saccade ni problème de lisibilité. La partie Extrême n'a pas été mesurée.
+
+\begin{afaire}[À compléter après le test PC]
+Comparaison avec le build PCVR (FPS de l'overlay de Link, rendu des effets avec HDR et post-process).
 \end{afaire}
-% TODO : rédiger ici la comparaison qualité / fluidité à partir des mesures.
 
 % =====================================================================
 \section{Difficultés, solutions et limitations}
