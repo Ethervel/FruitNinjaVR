@@ -1,0 +1,15 @@
+indicateur,valeur,unite
+frames,243916,count
+cpu_mean,0.3925,ms
+cpu_p95,0.5526,ms
+cpu_p99,0.6987,ms
+cpu_max,42.3026,ms
+cpu_min,0.0000,ms
+gc_alloc_total,242.55,Mo
+gc_alloc_mean_per_frame,1.02,ko
+gc_alloc_max_per_frame,41.57,ko
+gc_collections,145,count
+total_used_start,81.783,Mo
+total_used_end,110.938,Mo
+total_reserved_start,245.219,Mo
+total_reserved_end,298.727,Mo
