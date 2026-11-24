@@ -65,6 +65,18 @@ public class BenchMode : MonoBehaviour
     }
 
     [Serializable]
+    public class PoolStats
+    {
+        public string pool;
+        public int initialStock;
+        public int created;
+        public int reused;
+        public int returned;
+        public int idleEnd;
+        public int peakInUse;
+    }
+
+    [Serializable]
     public class BenchSummary
     {
         public string version;
@@ -91,6 +103,8 @@ public class BenchMode : MonoBehaviour
         public MemorySnapshot memoryStart = new MemorySnapshot();
         public MemorySnapshot memoryEnd = new MemorySnapshot();
         public List<PartSummary> parts = new List<PartSummary>();
+        // Part 2 : compteurs de pools (vide sur l'APK « avant », qui n'a pas de pools).
+        public List<PoolStats> pools = new List<PoolStats>();
         public string notes;
     }
 
@@ -108,8 +122,8 @@ public class BenchMode : MonoBehaviour
     FruitSpawner spawner;
 
     // ---- suivi des instances (observation de la scène) ----
-    readonly Dictionary<GameObject, int> tracked = new Dictionary<GameObject, int>();
-    readonly List<GameObject> deadBuf = new List<GameObject>();
+    // Clé = InstanceID (stable même quand l'objet est détruit, contrairement à la référence).
+    readonly Dictionary<int, int> tracked = new Dictionary<int, int>();
     // catégories : 0=fruit, 1=bombe, 2=FX, 3=morceau
     readonly int[] created = new int[4];
     readonly int[] destroyed = new int[4];
@@ -168,6 +182,13 @@ public class BenchMode : MonoBehaviour
     static void ParseArgs()
     {
         string[] args = Environment.GetCommandLineArgs();
+#if UNITY_ANDROID && !UNITY_EDITOR
+        // Sur Android, les extras "am start -e unity ..." n'arrivent PAS dans
+        // Environment.GetCommandLineArgs() : on passe par les intents de UnityPlayerActivity.
+        //   adb shell am start -n com.JunghoonKIM.FruitNinjaVR/com.unity3d.player.UnityPlayerActivity -e bench 1
+        // (ou fichier déclencheur <persistentDataPath>/bench.flag, lu ci-dessous).
+        args = ReadAndroidIntentArgs();
+#endif
         for (int i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -181,9 +202,44 @@ public class BenchMode : MonoBehaviour
             }
         }
         if (!enabled && Environment.GetEnvironmentVariable("FN_BENCH") == "1") enabled = true;
+#if UNITY_ANDROID && !UNITY_EDITOR
+        // Fichier déclencheur (méthode de secours si les extras d'intent ne passent pas) :
+        //   adb shell "run-as com.JunghoonKIM.FruitNinjaVR sh -c 'echo 1 > files/bench.flag'"
+        if (!enabled && File.Exists(Path.Combine(Application.persistentDataPath, "bench.flag"))) enabled = true;
+#endif
         if (partDuration <= 0f) partDuration = 90f;
         if (partsPlanned <= 0) partsPlanned = 3;
     }
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+    // Convertit les extras d'intent en pseudo-arguments : -e bench 1 -> "-bench",
+    // -e benchOut /sdcard/x.json -> "-benchOut /sdcard/x.json", etc.
+    static string[] ReadAndroidIntentArgs()
+    {
+        var result = new List<string>();
+        try
+        {
+            using (var player = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+            using (var activity = player.GetStatic<AndroidJavaObject>("currentActivity"))
+            using (var intent = activity.Call<AndroidJavaObject>("getIntent"))
+            {
+                if (intent == null) return result.ToArray();
+                foreach (var key in new[] { "bench", "benchOut", "benchParts", "benchDuration", "benchSeed", "benchNoQuit" })
+                {
+                    string v = intent.Call<string>("getStringExtra", key);
+                    if (string.IsNullOrEmpty(v)) continue;
+                    result.Add("-" + key);
+                    if (key != "bench" && key != "benchNoQuit") result.Add(v);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[Bench] Lecture des extras d'intent impossible : {e.Message}");
+        }
+        return result.ToArray();
+    }
+#endif
 
     void Start()
     {
@@ -328,11 +384,20 @@ public class BenchMode : MonoBehaviour
         GameObject fruit = FindSliceableFruit();
         if (fruit == null) return;
 
-        sliceAttempts++;
         Vector3 slicePoint = fruit.transform.position;
         Vector3 sliceNormal = Vector3.up; // plan horizontal déterministe
         FruitController fc = fruit.GetComponentInParent<FruitController>();
         Color juice = fc != null ? fc.juiceColor : Color.yellow;
+
+        // Même garde que KatanaSlicer (Part 2), par réflexion pour rester compilable à
+        // l'identique sur le commit « avant » (sans TryMarkSliced : no-op) : sur l'« après »,
+        // un fruit déjà coupé est ignoré (un fruit = un score).
+        if (fc != null)
+        {
+            var guard = typeof(FruitController).GetMethod("TryMarkSliced");
+            if (guard != null && !(bool)guard.Invoke(fc, null)) return;
+        }
+        sliceAttempts++;
 
         slicer.Slice(fruit, slicePoint, sliceNormal);
         if (GameFX.Instance != null) GameFX.Instance.PlayFruitJuice(slicePoint, juice);
@@ -413,25 +478,35 @@ public class BenchMode : MonoBehaviour
     }
 
     // Observe la scène pour compter créations/destructions par type, sans modifier le code de jeu.
+    // Part 2 : les pools désactivent/réactivent les instances au lieu de les détruire.
+    // - « destroyed » = destruction réelle ET retours au pool (fin d'usage observable) ;
+    // - « created » = toute (ré)activation d'une instance, neuve ou réutilisée.
+    // Les compteurs de pools proprement dits (Instantiate vs réutilisation) sont dans `pools`.
+    readonly HashSet<int> seenThisFrame = new HashSet<int>();
+    readonly List<int> toRemove = new List<int>();
+
     void TrackInstances()
     {
-        // Détections des destructions : référence Unity devenue null (objet détruit).
-        deadBuf.Clear();
-        foreach (var kv in tracked)
-            if (kv.Key == null) deadBuf.Add(kv.Key);
-        foreach (var dead in deadBuf)
-        {
-            int cat = tracked[dead];
-            destroyed[cat]++;
-            currentAlive[cat]--;
-            tracked.Remove(dead);
-        }
+        seenThisFrame.Clear();
 
-        // Détections des créations.
+        // Détections des (ré)activations.
         Scan<FruitController>(0);
         Scan<BombController>(1);
         ScanPieces();
         ScanFX();
+
+        // Fins d'usage observées : objet détruit OU désactivé (retour au pool).
+        // Liste construite à part pour ne pas modifier le dictionnaire pendant son parcours.
+        toRemove.Clear();
+        foreach (var kv in tracked)
+            if (!seenThisFrame.Contains(kv.Key)) toRemove.Add(kv.Key);
+        foreach (var id in toRemove)
+        {
+            int cat = tracked[id];
+            destroyed[cat]++;
+            currentAlive[cat]--;
+            tracked.Remove(id);
+        }
 
         for (int c = 0; c < 4; c++)
             if (currentAlive[c] > peakAlive[c]) peakAlive[c] = currentAlive[c];
@@ -439,7 +514,7 @@ public class BenchMode : MonoBehaviour
 
     void Scan<T>(int cat) where T : Component
     {
-        var comps = FindObjectsByType<T>(FindObjectsSortMode.None);
+        var comps = FindObjectsByType<T>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
         foreach (var c in comps)
         {
             if (c == null) continue;
@@ -449,7 +524,7 @@ public class BenchMode : MonoBehaviour
 
     void ScanPieces()
     {
-        var mfs = FindObjectsByType<MeshFilter>(FindObjectsSortMode.None);
+        var mfs = FindObjectsByType<MeshFilter>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
         foreach (var mf in mfs)
         {
             if (mf == null) continue;
@@ -460,7 +535,7 @@ public class BenchMode : MonoBehaviour
 
     void ScanFX()
     {
-        var pss = FindObjectsByType<ParticleSystem>(FindObjectsSortMode.None);
+        var pss = FindObjectsByType<ParticleSystem>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
         foreach (var ps in pss)
         {
             if (ps == null) continue;
@@ -472,8 +547,10 @@ public class BenchMode : MonoBehaviour
 
     void Register(GameObject go, int cat)
     {
-        if (tracked.ContainsKey(go)) return;
-        tracked[go] = cat;
+        int id = go.GetInstanceID();
+        seenThisFrame.Add(id);
+        if (tracked.ContainsKey(id)) return;
+        tracked[id] = cat;
         created[cat]++;
         currentAlive[cat]++;
     }
@@ -518,6 +595,7 @@ public class BenchMode : MonoBehaviour
             memoryStart = memStart,
             memoryEnd = memEnd,
             parts = partSummaries,
+            pools = CollectPoolStats(),
             notes = "Compteurs obtenus par observation de la scène (FindObjectsByType), sans modification du gameplay. " +
                     "Morceaux = GameObjects dont le nom contient _Slice_. FX = ParticleSystem au root nommés FX_*. " +
                     "GC collections = GC.CollectionCount (managé). Mémoire Unity = Profiler.GetTotalAllocated/ReservedMemoryLong.",
@@ -552,6 +630,34 @@ public class BenchMode : MonoBehaviour
     }
 
     Counters ToCounters(int c) => new Counters { created = created[c], destroyed = destroyed[c], peakAlive = peakAlive[c] };
+
+    // Part 2 : relève les compteurs des pools via PoolRegistry, par réflexion pour que ce
+    // fichier reste compilable à l'identique sur le commit « avant » (sans pools).
+    List<PoolStats> CollectPoolStats()
+    {
+        var list = new List<PoolStats>();
+        var regType = Type.GetType("PoolRegistry");
+        var poolType = Type.GetType("GameObjectPool");
+        if (regType == null || poolType == null) return list;
+        var pools = regType.GetProperty("Pools")?.GetValue(null) as System.Collections.IEnumerable;
+        if (pools == null) return list;
+        foreach (var p in pools)
+        {
+            if (p == null) continue;
+            int I(string prop) { var v = poolType.GetProperty(prop)?.GetValue(p); return v is int n ? n : 0; }
+            list.Add(new PoolStats
+            {
+                pool = poolType.GetProperty("PoolName")?.GetValue(p) as string ?? "?",
+                initialStock = I("initialStock"),
+                created = I("Created"),
+                reused = I("Reused"),
+                returned = I("Returned"),
+                idleEnd = I("IdleCount"),
+                peakInUse = I("PeakInUse"),
+            });
+        }
+        return list;
+    }
 
     // frames.csv : une ligne par frame (phase, CPU ms, GC alloc ko, mémoire Mo, objets actifs, collectes).
     void WriteFramesCsv(string dir)
@@ -620,6 +726,12 @@ public class BenchMode : MonoBehaviour
     {
         if (!string.IsNullOrEmpty(outPath)) return outPath;
         string stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+#if UNITY_ANDROID && !UNITY_EDITOR
+        // Sur le casque : stockage privé de l'app (pas de permission requise), récupérable
+        // en Development avec : adb shell "run-as com.JunghoonKIM.FruitNinjaVR cat files/bench/bench-summary.json"
+        return Path.Combine(Application.persistentDataPath, "bench", "bench-summary.json");
+#else
         return Path.Combine(Application.dataPath, "..", "docs", "part2", $"bench-{stamp}.json");
+#endif
     }
 }
