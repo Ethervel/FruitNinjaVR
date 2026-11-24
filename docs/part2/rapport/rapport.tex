@@ -51,23 +51,18 @@
 \textbf{Résumé.} La Part 2 remplace les créations et destructions d'objets pendant le jeu
 par des réserves d'objets réutilisés (pools). Elle charge aussi les effets et le sabre
 selon la plateforme (PC VR ou Quest). Les mesures PC et Quest montrent moins d'allocations
-mémoire et plus aucun objet détruit en jeu. Le rapport explique la méthode, les résultats
-et leurs limites.
+mémoire et plus aucun objet détruit en jeu.
 
-Quelques mots sur la session casque du 25/11 :
-\begin{itemize}
-\item Les mesures Quest ont été faites au casque (Quest 3 porté, écran à 72~Hz).
-\item Le scénario de test n'est pas le même sur Quest et sur PC. Sur Quest, le bench
-      coupe 13 à 37 fruits par partie au lieu de 34 (voir section~\ref{sec:mesures}).
-      Les chiffres Quest sont donc aussi donnés par coupe et par minute.
-\item Les figures sont des graphiques tracés à partir des mesures du jeu. Ce ne sont
-      pas des captures d'écran du Profiler (l'outil de mesure de Unity) : l'éditeur
-      n'était pas ouvert pendant les runs Quest, et la capture d'écran par
-      \texttt{adb screencap} est bloquée sur Quest 3.
-\item Les tests visuels Quest et PCVR via Link sont confirmés par l'utilisateur
-      (déclaratif). Les journaux ne couvrent qu'une partie du test Quest et ne
-      montrent pas le test PCVR (section~\ref{sec:tests}).
-\end{itemize}
+Les mesures Quest viennent de la session casque du 25/11 (Quest 3 porté, écran à
+72~Hz). Le scénario de test n'est pas le même sur Quest et sur PC : le bench Quest
+coupe 13 à 37 fruits par partie au lieu de 34, donc les chiffres Quest sont aussi
+donnés par coupe et par minute (section~\ref{sec:mesures}). Les figures sont des
+graphiques tracés à partir des mesures du jeu, pas des captures d'écran du Profiler
+(l'outil de mesure de Unity) : l'éditeur n'était pas ouvert pendant les runs Quest,
+et \texttt{adb screencap} est bloqué sur Quest 3. Les tests visuels Quest et PCVR
+via Link sont confirmés par l'utilisateur (déclaratif) ; les journaux ne couvrent
+qu'une partie du test Quest et ne montrent pas le test PCVR
+(section~\ref{sec:tests}).
 
 % =====================================================================
 \section{Objectif et méthode}
@@ -81,17 +76,14 @@ Le GC (« garbage collector », ramasse-miettes) est le mécanisme qui libère l
 des objets C\# oubliés. Chaque collecte prend du temps processeur et peut provoquer une
 micro-saccade. Réduire les allocations réduit les collectes.
 
-La Part 2 agit sur trois points :
-\begin{itemize}
-\item Task 1 : pools des objets de jeu (fruits, bonus, bombes).
-\item Task 2 : pools des effets et des morceaux, avec réutilisation des meshes.
-\item Tasks 3 et 4 : Addressables. C'est le système de Unity qui charge des assets
-      (prefabs, textures...) depuis des fichiers séparés (bundles), choisis au build.
-      Ici il sert à charger la variante PCVR ou Quest des effets et du sabre.
-\end{itemize}
+Le travail suit les tâches du sujet. Task 1 : pools des objets de jeu (fruits,
+bonus, bombes). Task 2 : pools des effets et des morceaux, avec réutilisation des
+meshes. Tasks 3 et 4 : Addressables, le système de Unity qui charge des assets
+(prefabs, textures...) depuis des fichiers séparés (bundles), choisis au build.
+Ici il sert à charger la variante PCVR ou Quest des effets et du sabre.
 
-\textbf{Le bench.} Pour comparer l'avant et l'après, un mode de test automatique
-(\fichier{Assets/Scripts/Debug/}\allowbreak\fichier{BenchMode.cs}) rejoue toujours la même partie :
+Pour comparer l'avant et l'après, un mode de test automatique (le bench,
+\fichier{Assets/Scripts/Debug/}\allowbreak\fichier{BenchMode.cs}) rejoue toujours la même partie :
 graine aléatoire fixe 12345, difficulté Normal, une coupe simulée toutes les 0,35~s,
 une bombe touchée jusqu'à explosion après 15~s, 3 parties séparées par 2 retours au menu.
 La coupe simulée passe par le même code que le sabre du joueur.
@@ -174,22 +166,22 @@ Deux gardes protègent le score :
       une bombe = une pénalité d'explosion.
 \end{itemize}
 
-Le bench vérifie 3 parties sans état résiduel : 34 coupes, 3 touches, 1 explosion par
-partie, identiques sur les 3 parties.
+Le bench vérifie 3 parties sans état résiduel : 34 coupes, 3 touches et 1 explosion
+par partie, identiques d'une partie à l'autre.
 
 % =====================================================================
 \section{Task 2 : pools d'effets et de morceaux}
 
-\textbf{Effets} (\fichier{GameFX.cs}) : un pool par variante (jus : 8, explosions : 4).
+Les effets (\fichier{GameFX.cs}) ont un pool par variante (jus : 8, explosions : 4).
 Ces stocks couvrent les pics mesurés : 5 jus simultanés au bench, 3 effets par bombe.
 À la sortie du pool : \texttt{Stop(StopEmittingAndClear)} + \texttt{Clear(true)} puis
 \texttt{Play(true)}. Aucune particule de l'usage précédent ne subsiste. Le retour au
 pool est programmé à la fin de l'effet (\texttt{FXReturn}, durée + 0,5~s) ; il remplace
 \texttt{Destroy(fx, délai)}. Au bench : 8 + 4 créations, 102 + 6 réutilisations.
 
-\textbf{Morceaux de fruits} (\fichier{Slicer.cs}, \fichier{SlicedPiece.cs}) : pool de
-24 objets créés depuis un template (pic mesuré : 6 au bench, $\approx 15$ estimés en
-jeu réel). Chaque morceau garde son Mesh (le maillage 3D). Il est réécrit à chaque
+Les morceaux de fruits (\fichier{Slicer.cs}, \fichier{SlicedPiece.cs}) viennent d'un
+pool de 24 objets créés depuis un template (pic mesuré : 6 au bench, $\approx 15$
+estimés en jeu réel). Chaque morceau garde son Mesh (le maillage 3D). Il est réécrit à chaque
 coupe (\texttt{Clear()} puis \texttt{SetVertices/SetNormals/SetUVs/SetTriangles}) au
 lieu d'un \texttt{new Mesh}. L'allocation GPU est donc réutilisée. La géométrie de
 découpe (plan, caps, triangulation) est inchangée.
@@ -260,7 +252,7 @@ Le contenu chargé en mémoire est ce qui réside à l'exécution. Un bundle sur
 ne coûte rien tant qu'il n'est pas chargé. \texttt{LoadAssetAsync} le charge ; le handle
 le maintient en mémoire. Les clones des pools ne dupliquent pas les meshes : ils les
 référencent. \texttt{Release} décharge quand plus aucun clone n'en dépend. La taille du
-build dépend des groupes inclus ; la mémoire dépend des handles actifs et des stocks
+build dépend des groupes inclus. La mémoire dépend des handles actifs et des stocks
 préchauffés.
 
 % =====================================================================
@@ -296,7 +288,6 @@ Score / partie (contrôle, $\times 3$) & 895 & 815 (voir ci-dessous) \\
 \end{tabularx}
 \end{table}
 
-Explication des écarts :
 \begin{itemize}
 \item Score 895 $\rightarrow$ 815 : les bombes explosées ne restent plus figées dans
       la scène. Le bench re-touche alors une nouvelle bombe, d'où des pénalités en plus.
@@ -304,7 +295,7 @@ Explication des écarts :
       état résiduel. Les fruits coupés et la séquence de spawn sont identiques.
 \item CPU max 43,9~ms et pic d'allocation 243,3~ko/frame : c'est le chargement
       Addressables au démarrage (une seule fois, phase \texttt{loading}). Ce n'est pas
-      une régression en jeu. Les p95/p99 baissent.
+      une régression en jeu, et les p95/p99 baissent.
 \item CPU moyen quasi stable (0,39 $\rightarrow$ 0,37~ms) : sans casque, le bench est
       dominé par le rendu et la simulation, pas par les allocations. Le gain se voit
       surtout sur la mémoire et les collectes, et au casque (IL2CPP, mémoire plus
@@ -319,8 +310,8 @@ Quest 3, Android 14 (vOS 205), APK Development + connexion Profiler, bench seed 
 Le scénario n'est pas identique entre runs. À 72~fps, les fruits montent moins haut
 entre deux frames. Ils passent moins de temps au-dessus du seuil de coupe du bench, et
 les 3 vies se perdent plus tôt. Le run avant fait 51 coupes en 70,7~s ; le run après,
-75 coupes en 77,4~s. Les chiffres bruts ne se comparent donc pas tels quels : les lignes
-normalisées (par coupe, par minute) sont la comparaison équitable.
+75 coupes en 77,4~s. Les chiffres bruts ne se comparent donc pas tels quels. Pour comparer, je regarde
+les lignes normalisées du tableau : par coupe et par minute.
 
 Une frame a duré 10,7~s pendant le run avant (événement du système Quest, absent des
 deux autres runs). Elle est exclue des moyennes.
@@ -349,9 +340,8 @@ VrApi FPS / App / CPU\&GPU (ms) & 72/72 ; 8,62 ; 13,31 & 72/72 ; 8,87 ; 12,44 \\
 \end{tabularx}
 \end{table}
 
-Lecture des résultats Quest :
 \begin{itemize}
-\item Le gain est net par action de jeu : $-25$~\% d'allocations GC par coupe.
+\item Les allocations GC par coupe baissent de 25~\%.
 \item 74 créations au démarrage (= les stocks), 322 réutilisations, 0 destruction en jeu.
 \item Le CPU moyen est stable ($\sim$13,9~ms) : il est dominé par le rendu à 72~Hz.
       Le temps CPU\&GPU mesuré par VrApi (l'API système du Quest) baisse un peu :
@@ -370,16 +360,14 @@ Lecture des résultats Quest :
 \caption{Graphiques des mesures \texttt{ProfilerRecorder} (Quest avant / après).
 Haut : mémoire allouée par frame (ko ; orange si $>$100~ko). Bas : temps CPU par frame
 (ms ; lignes rouges = 13,9~ms pour 72~fps et 16,7~ms pour 60~fps ; échelle limitée à
-60~ms). Fond : bleu = partie, vert = menu. Ces figures ne sont pas des captures d'écran
-du Profiler (voir les limites).}
+60~ms). Fond : bleu = partie, vert = menu.}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{../captures-profiler/playmode-apres-profiler-synthese.png}
 \caption{Bench « après » en Play Mode dans l'éditeur sur PC (sans casque). 3 parties
-de 34 coupes, score 815 : identique au build Windows. Référence côté PC ; ne remplace
-pas une capture au casque.}
+de 34 coupes, score 815 : identique au build Windows.}
 \end{figure}
 
 % =====================================================================
@@ -419,15 +407,15 @@ pas une capture au casque.}
       n'a pas été nécessaire.
 \end{itemize}
 
-\textbf{Tests visuels : confirmé par l'utilisateur (déclaratif).} L'utilisateur a
+Tests visuels : confirmé par l'utilisateur (déclaratif). L'utilisateur a
 répondu « tout OK » pour les quatre points Quest : jus à la couleur du fruit à chaque
 coupe ; explosion complète (shake + flash) à la 3e touche ; katana Quest ; plusieurs
 parties sans fruit fantôme ni ralentissement. Il a aussi confirmé le test PCVR via
-Link : variante PCVR des effets, katana détaillé. Réserve honnête : les logs Quest ne
-montrent que 2 parties et 2 touches de bombe avant la veille du casque, et le test
-PCVR n'apparaît pas dans les logs. La confirmation repose donc sur le déclaratif de
-l'utilisateur. Les captures d'écran Quest étaient impossibles via adb
-(\texttt{screencap} bloqué sur Quest 3, fichier 0 octet).
+Link : variante PCVR des effets, katana détaillé. Les logs Quest ne montrent que
+2 parties et 2 touches de bombe avant la veille du casque, et le test PCVR n'apparaît
+pas dans les logs. La confirmation repose donc sur le déclaratif de l'utilisateur.
+Les captures d'écran Quest étaient impossibles via adb (\texttt{screencap} bloqué
+sur Quest 3, fichier 0 octet).
 
 % =====================================================================
 \section{Difficultés et limites}
