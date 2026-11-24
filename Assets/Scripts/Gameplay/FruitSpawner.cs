@@ -47,9 +47,26 @@ public class FruitSpawner : MonoBehaviour
     private Coroutine spawnCoroutine;
     private Coroutine cleanupCoroutine;
 
+    // Pooling (Part 2, Task 1) : génération des coroutines de gravité custom.
+    // Une instance rendue au pool ne doit plus recevoir l'AddForce de son usage précédent.
+    private int gravityGeneration;
+
     void Start()
     {
         InitializeSpawner();
+        WarmPools();
+    }
+
+    // Préchauffe un pool par prefab (fruits ordinaires, bonus, bombes).
+    // Les stocks sont justifiés dans PoolManager à partir des mesures « avant ».
+    void WarmPools()
+    {
+        var pm = PoolManager.Instance;
+        if (pm == null) return;
+        if (fruitPrefabs != null)
+            foreach (var prefab in fruitPrefabs)
+                if (prefab != null) pm.Warm(prefab, pm.StockFor(prefab));
+        if (bonusFruitPrefab != null) pm.Warm(bonusFruitPrefab, pm.StockFor(bonusFruitPrefab));
     }
 
     // NOUVEAU : Méthode d'initialisation séparée pour le redémarrage
@@ -130,12 +147,13 @@ public class FruitSpawner : MonoBehaviour
     // NOUVEAU : Méthode pour nettoyer tous les fruits existants
     private void CleanupAllFruits()
     {
-        // Nettoyer la liste activeFruits
+        // Nettoyer la liste activeFruits : retour au pool (Part 2) ou destruction (fallback)
+        gravityGeneration++; // stoppe les coroutines de gravité des instances en vol
         for (int i = activeFruits.Count - 1; i >= 0; i--)
         {
             if (activeFruits[i] != null)
             {
-                Destroy(activeFruits[i]);
+                RetireFruit(activeFruits[i]);
             }
         }
         activeFruits.Clear();
@@ -241,7 +259,10 @@ public class FruitSpawner : MonoBehaviour
         }
 
         Transform spawnPoint = spawnPoints[spawnIndex];
-        GameObject fruit = Instantiate(fruitPrefab, spawnPoint.position, GetRandomRotation());
+        // Pooling (Part 2, Task 1) : réutilisation d'une instance réinitialisée au lieu d'Instantiate.
+        GameObject fruit = PoolManager.Instance != null
+            ? PoolManager.Instance.Spawn(fruitPrefab, spawnPoint.position, GetRandomRotation())
+            : Instantiate(fruitPrefab, spawnPoint.position, GetRandomRotation());
         
         if (fruit != null)
         {
@@ -260,11 +281,35 @@ public class FruitSpawner : MonoBehaviour
         }
         
         StartCoroutine(ReleaseSpawnPoint(spawnIndex, 1f));
-        
+
         if (fruit != null)
         {
-            Destroy(fruit, 10f);
+            // Filet de sécurité (10 s) : retour au pool au lieu de Destroy(fruit, 10f).
+            // Réarmé à chaque réactivation, caduc si l'instance est rendue avant.
+            var lt = fruit.GetComponent<PooledLifetime>();
+            if (lt == null)
+            {
+                lt = fruit.AddComponent<PooledLifetime>();
+                lt.seconds = 10f;
+            }
         }
+    }
+
+    // Retour au pool d'une instance (ou destruction si elle n'est pas poolée).
+    void RetireFruit(GameObject fruit)
+    {
+        var po = fruit.GetComponent<PooledObject>();
+        if (po != null) po.ReturnToPool();
+        else Destroy(fruit);
+    }
+
+    // Appelée par le Slicer quand le fruit vient d'être découpé : il ne doit plus
+    // être compté comme « raté » par le nettoyage, ni recevoir de gravité custom.
+    public void NotifySliced(GameObject fruit)
+    {
+        if (fruit == null) return;
+        activeFruits.Remove(fruit);
+        RemoveFruitFromLine(fruit);
     }
 
     void EnsureFruitComponents(GameObject fruit)
@@ -370,7 +415,7 @@ public class FruitSpawner : MonoBehaviour
         Vector3 torque = CalculateTorque();
         rb.AddTorque(torque, ForceMode.Impulse);
         
-        StartCoroutine(ApplyCustomGravity(rb));
+        StartCoroutine(ApplyCustomGravity(rb, gravityGeneration));
     }
 
     Vector3 CalculateTorque()
@@ -396,12 +441,16 @@ public class FruitSpawner : MonoBehaviour
         }
     }
 
-    IEnumerator ApplyCustomGravity(Rigidbody rb)
+    IEnumerator ApplyCustomGravity(Rigidbody rb, int gen)
     {
         if (rb == null) yield break;
 
-        while (rb != null && (GameManager.Instance == null || GameManager.Instance.IsGameRunning()))
+        while (rb != null && gen == gravityGeneration &&
+               (GameManager.Instance == null || GameManager.Instance.IsGameRunning()))
         {
+            // Instance rendue au pool : ne plus la pousser (elle sera réarmée au prochain spawn).
+            var po = rb.GetComponent<PooledObject>();
+            if (po != null && !po.InUse) yield break;
             if (rb.useGravity)
             {
                 rb.AddForce(Physics.gravity * (gravityScale - 1f), ForceMode.Acceleration);
@@ -507,7 +556,7 @@ public class FruitSpawner : MonoBehaviour
                 }
                 
                 RemoveFruitFromLine(activeFruits[i]);
-                Destroy(activeFruits[i]);
+                RetireFruit(activeFruits[i]);
                 activeFruits.RemoveAt(i);
             }
         }

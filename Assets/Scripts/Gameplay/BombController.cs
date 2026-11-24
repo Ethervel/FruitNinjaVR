@@ -33,6 +33,9 @@ public class BombController : MonoBehaviour
     private bool isExploding = false;
     private Vector3 originalPosition;
     private AudioSource audioSource;
+    private int generation; // pooling : invalide la séquence d'explosion d'un usage précédent
+    private float returnDelay = -1f; // > 0 : retour au pool programmé après l'explosion
+    private float returnAt;
 
     // Mat/renderer internes du flash
     private Material _flashMat;
@@ -47,10 +50,37 @@ public class BombController : MonoBehaviour
         if (eclipseQuad != null) eclipseQuad.SetActive(false);
     }
 
+    // Pooling (Part 2, Task 1) : réinitialisation complète des données de jeu à la réactivation
+    // (compteur de touches, état d'explosion, flash). La physique est remise à zéro par le pool.
+    void OnEnable()
+    {
+        generation++;
+        hitCount = 0;
+        isExploding = false;
+        returnDelay = -1f;
+        if (eclipseQuad != null) eclipseQuad.SetActive(false);
+        if (_flashMat != null) SetMatAlpha(_flashMat, 0f);
+    }
+
+    void OnDisable()
+    {
+        generation++;
+        StopAllCoroutines();
+    }
+
     void Update()
     {
         // DEBUG (facultatif) : espace = toucher
         if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame) OnTouch();
+
+        // Retour au pool après l'explosion (voir ExplosionCoroutine). Fait dans Update
+        // pour rester actif même si l'objet est désactivé/réactivé entre-temps.
+        if (returnDelay > 0f && Time.time >= returnAt)
+        {
+            returnDelay = -1f;
+            var po = GetComponent<PooledObject>();
+            if (po != null) po.ReturnToPool();
+        }
     }
 
     public void OnTouch()
@@ -115,6 +145,7 @@ public class BombController : MonoBehaviour
 
     private void StartExplosionSequence()
     {
+        if (isExploding) return; // une bombe = une seule séquence d'explosion
         isExploding = true;
         originalPosition = transform.position;
 
@@ -127,9 +158,22 @@ public class BombController : MonoBehaviour
 
     private IEnumerator ExplosionCoroutine()
     {
+        int gen = generation;
         yield return ShakeCoroutine();          // 1) shake
         yield return FlashCoroutineFinal();     // 2) flash blanc
         ResetBomb();                            // 3) reset
+
+        // Pooling (Part 2, Task 1) : une bombe explosive RENTRE AU POOL après son flash
+        // (au lieu de rester figée dans la scène jusqu'au timeout de 10 s).
+        if (gen == generation)
+        {
+            var po = GetComponent<PooledObject>();
+            if (po != null)
+            {
+                returnAt = Time.time + 0.2f;
+                returnDelay = 0.2f;
+            }
+        }
     }
 
     private IEnumerator ShakeCoroutine()
@@ -251,8 +295,12 @@ public class BombController : MonoBehaviour
             return;
         }
 
+        // Pooling (Part 2) : le quad de flash et son matériau sont réutilisés entre explosions
+        // et entre réutilisations de la bombe (plus de CreatePrimitive + new Material par bombe).
+        bool freshMaterial = false;
         if (_flashMat == null)
         {
+            freshMaterial = true;
             Shader shader = Shader.Find("Universal Render Pipeline/Unlit"); // URP
             if (shader == null) shader = Shader.Find("Unlit/Transparent");  // Built-in transparent
             if (shader == null) shader = Shader.Find("Unlit/Color");        // Built-in
@@ -292,7 +340,8 @@ public class BombController : MonoBehaviour
             SetMatColor(_flashMat, new Color(1f, 1f, 1f, 0f));
         }
 
-        _flashRenderer.material = _flashMat;
+        if (freshMaterial) _flashRenderer.material = _flashMat; // une seule instanciation de matériau
+        else _flashRenderer.sharedMaterial = _flashMat;
         eclipseQuad.SetActive(false);
         
         if (debugLogs) Debug.Log("[Bomb] Flash quad initialized successfully");
@@ -355,12 +404,17 @@ public class BombController : MonoBehaviour
         }
     }
 
-    // Nettoyage
+    // Nettoyage FINAL (fin de jeu / déchargement de scène, pas à chaque retour au pool).
+    // Le quad de flash est parenté à la caméra (hors de la bombe) : on le détruit explicitement.
     void OnDestroy()
     {
+        if (eclipseQuad != null && eclipseQuad.name == "DynamicFlashQuad")
+        {
+            Destroy(eclipseQuad);
+        }
         if (_flashMat != null)
         {
-            DestroyImmediate(_flashMat);
+            Destroy(_flashMat);
         }
     }
 }

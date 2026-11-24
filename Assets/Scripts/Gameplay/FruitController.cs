@@ -9,6 +9,7 @@ public class FruitController : MonoBehaviour
     public Color juiceColor = new Color(1f, 0.85f, 0.3f);
 
     private bool wasSliced = false;
+    private int generation; // pooling : invalide les coroutines d'un usage précédent
 
     void Start()
     {
@@ -19,12 +20,35 @@ public class FruitController : MonoBehaviour
         }
     }
 
+    // Pooling (Part 2, Task 1) : réinitialisation des données de jeu à chaque réactivation.
+    void OnEnable()
+    {
+        wasSliced = false;
+        generation++;
+    }
+
+    void OnDisable()
+    {
+        generation++;
+        StopAllCoroutines();
+    }
+
+    // Garde centralisée « un fruit = une coupe = un score » (Part 2, Task 1).
+    // Appelée par les DEUX sabres et par le bench : le premier appel rend true,
+    // les suivants (autre sabre, même frame ou frame suivante) rendent false.
+    public bool TryMarkSliced()
+    {
+        if (wasSliced) return false;
+        wasSliced = true;
+        return true;
+    }
+
+    public bool WasSliced => wasSliced;
+
     public void OnSliced()
     {
-        if (wasSliced) return;
-        
-        wasSliced = true;
-        
+        if (!TryMarkSliced()) return;
+
         // Notifier le GameManager
         if (GameManager.Instance != null)
         {
@@ -35,8 +59,8 @@ public class FruitController : MonoBehaviour
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb != null) rb.isKinematic = true;
 
-        // Détruire après un délai
-        Destroy(gameObject, 2f);
+        // Retour au pool (ou destruction) après un délai
+        StartCoroutine(ReturnAfter(2f, generation));
     }
 
     void OnBecameInvisible()
@@ -45,7 +69,16 @@ public class FruitController : MonoBehaviour
         if (!wasSliced && GameManager.Instance != null)
         {
             GameManager.Instance.OnFruitMissed(gameObject);
-            Destroy(gameObject, 1f);
+            StartCoroutine(ReturnAfter(1f, generation));
         }
+    }
+
+    System.Collections.IEnumerator ReturnAfter(float delay, int gen)
+    {
+        yield return new WaitForSeconds(delay);
+        if (gen != generation) yield break; // instance réutilisée entre-temps : ne rien faire
+        var po = GetComponent<PooledObject>();
+        if (po != null) po.ReturnToPool();
+        else Destroy(gameObject);
     }
 }

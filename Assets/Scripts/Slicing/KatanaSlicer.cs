@@ -164,7 +164,15 @@ public class KatanaSlicer : MonoBehaviour
             Vector3 slicePoint = GetSlicePoint(fruit);
             Vector3 sliceNormal = CalculateSliceNormal(averageVelocity);
             FruitController fruitController = fruit.GetComponentInParent<FruitController>();
-            
+
+            // Pooling (Part 2, Task 1) : garde « un fruit = un score » partagée par les DEUX
+            // sabres (le HashSet local ne couvre que ce sabre, et seulement cette frame).
+            if (fruitController != null && !fruitController.TryMarkSliced())
+            {
+                Debug.Log($"🚫 Fruit déjà coupé (autre sabre): {fruit.name}");
+                return;
+            }
+
             slicer.Slice(fruit, slicePoint, sliceNormal);
 
             // Effet de jus au point de contact (Part 1, Task 3)
