@@ -9,6 +9,7 @@ EditorBuildSettings:
     path: Assets/Scenes/FruitNinjaVR_Main.unity
     guid: 99c9720ab356a0642a771bea13969a05
   m_configObjects:
+    com.unity.addressableassets: {fileID: 11400000, guid: ea5d86726c5f06c498ca7279a4b8e911, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 0f9c115bc57ae57449d913fc24a3ab21, type: 2}
     com.unity.xr.openxr.settings4: {fileID: 11400000, guid: c48bef5c33a7fc342a6469191ef1ee70, type: 2}

@@ -59,8 +59,22 @@ public class GameFX : MonoBehaviour
     void Awake()
     {
         Instance = this;
-        SetupPools(FruitJuicePrefab, BombExplosionPrefab);
-        Debug.Log($"[GameFX] variante utilisée : {(IsQuest ? "Quest" : "PCVR")} ({FruitJuicePrefab?.name}, {BombExplosionPrefab?.name})");
+    }
+
+    IEnumerator Start()
+    {
+        // Étape 3 (Addressables) : attend le préchargement AVANT la partie ; AssetLoader
+        // appelle SetupPools avec les assets chargés (ou les replis en cas d'échec).
+        // Timeout de sécurité : sans AssetLoader dans la scène, pools sur références directes.
+        float deadline = Time.realtimeSinceStartup + 10f;
+        while (AssetLoader.Instance != null && !AssetLoader.Instance.IsReady &&
+               Time.realtimeSinceStartup < deadline)
+            yield return null;
+        if (juicePool == null)
+            SetupPools(FruitJuicePrefab, BombExplosionPrefab);
+        Debug.Log($"[GameFX] variante utilisée : {(IsQuest ? "Quest" : "PCVR")} " +
+                  $"(jus={juicePool?.PoolName}, explosion={explosionPool?.PoolName}) " +
+                  $"pools : jus {juicePool?.IdleCount ?? 0}, explosion {explosionPool?.IdleCount ?? 0}");
     }
 
     // Crée (ou ré-alimente) les pools avec les prefabs donnés. À l'étape 3, AssetLoader

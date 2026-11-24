@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: FX_Quest
+  m_EditorClassIdentifier: 
+  m_GroupName: FX_Quest
+  m_GUID: 20e9afc301c6182438dc7b38c79f342c
+  m_SerializeEntries:
+  - m_GUID: c80987e27d3020d44b1d2e8f1050062c
+    m_Address: FX_BombExplosion
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - FX_Quest
+    - fx
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d43dd0724416e8d4b9c111cf822edd95
+    m_Address: FX_FruitJuice
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - FX_Quest
+    - fx
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 16f536d1221794848b7e897f2e614d0d, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 5a051360308b0d14f99ef1e1f8e41b66, type: 2}
+    - {fileID: 11400000, guid: 324496ac585897441b6bc58f0c421b41, type: 2}

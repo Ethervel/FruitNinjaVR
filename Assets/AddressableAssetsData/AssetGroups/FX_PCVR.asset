@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: FX_PCVR
+  m_EditorClassIdentifier: 
+  m_GroupName: FX_PCVR
+  m_GUID: 3c6da6272332ef5429bf50e78cbc5009
+  m_SerializeEntries:
+  - m_GUID: 48c3761b8e26a3a479b091223104700a
+    m_Address: FX_BombExplosion
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - FX_PCVR
+    - fx
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7d8d4bace21b21c4c8787964d7a4c799
+    m_Address: Katana
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - FX_PCVR
+    - katana
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f233d4ec7d0af9e418c957680581013f
+    m_Address: FX_FruitJuice
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - FX_PCVR
+    - fx
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 16f536d1221794848b7e897f2e614d0d, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 6a7131c34688d3848a90661140653509, type: 2}
+    - {fileID: 11400000, guid: c89878462175c014cb1419c568adbcc3, type: 2}

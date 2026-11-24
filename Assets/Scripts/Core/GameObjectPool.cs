@@ -54,6 +54,7 @@ public class GameObjectPool : MonoBehaviour
         maxSize = cap;
         EnsureRoot();
         for (int i = 0; i < initialStock; i++) CreateInstance();
+        PoolRegistry.Register(this);
     }
 
     void EnsureRoot()

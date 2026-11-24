@@ -299,6 +299,21 @@ public class BenchMode : MonoBehaviour
         yield return null;
         yield return null;
 
+        // Part 2 (Addressables) : attend le préchargement des assets AVANT la première
+        // partie (réflexion : ce fichier reste compilable sur le commit « avant »).
+        var loaderType = Type.GetType("AssetLoader");
+        if (loaderType != null)
+        {
+            float deadline = Time.realtimeSinceStartup + 30f;
+            while (Time.realtimeSinceStartup < deadline)
+            {
+                var inst = loaderType.GetProperty("Instance")?.GetValue(null);
+                if (inst == null) break;
+                if (loaderType.GetProperty("IsReady")?.GetValue(inst) is bool ready && ready) break;
+                yield return null;
+            }
+        }
+
         for (int p = 0; p < partsPlanned; p++)
         {
             phase = "part" + (p + 1);
