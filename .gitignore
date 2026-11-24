@@ -97,3 +97,9 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# Rapports et docs hors git (livrables, pas code Unity)
+docs/
+README.md
+*.pdf
+*.tex
