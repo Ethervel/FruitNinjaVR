@@ -100,3 +100,6 @@ InitTestScene*.unity*
 
 # Fichier solution genere par IDE
 Fruit_Ninja.slnx
+/docs/
+*.pdf
+*.tex
