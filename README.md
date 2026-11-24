@@ -89,3 +89,34 @@ Organisation des assets, prefabs des sabres, fruit bonus, Particle Systems PCVR/
 OpenXR Android (Meta Quest), Input System uniquement, correction d'un son joué en double et de l'erreur
 `Tag: Slice is not defined` (`DestroyFloor`). L'outil de développement `com.coplaydev.unity-mcp`, utilisé
 pendant le travail, a été retiré avant la remise.
+
+## Part 2 : gestion des ressources et optimisation mémoire (branche `part2`, tag `part2-remise`)
+
+Changements par rapport à la Part 1 :
+- **Pools** (Tasks 1-2) : un pool par prefab (fruits, bonus, bombe, jus, explosions, morceaux de
+  fruits), réinitialisation complète à la réactivation, plus aucun `Instantiate`/`Destroy` en jeu
+  (74 créations = stocks initiaux, 322-423 réutilisations selon la plateforme). Meshes des morceaux
+  réécrits au lieu d'être réalloués. Scripts : `Assets/Scripts/Core/` (GameObjectPool, PoolManager,
+  PooledObject, PooledLifetime, PoolRegistry).
+- **Addressables 2.10.3** (Tasks 3-4) : groupes `FX_PCVR` / `FX_Quest`, mêmes adresses
+  (`FX_FruitJuice`, `FX_BombExplosion`, `Katana`), handles gardés jusqu'à la destruction des clones,
+  repli sur références directes en cas d'échec (`AssetLoader`). Katana en deux variantes :
+  PCVR 1275 sommets, Quest 132 sommets / 1 matériau (`KatanaVariantApplier`).
+- **Bench déterministe** (`Assets/Scripts/Debug/BenchMode.cs`, seed 12345) : mesures CPU/GC/mémoire
+  par frame, activable par `-bench` (PC) ou extra d'intent `-e bench 1` (Quest, activité
+  `UnityPlayerGameActivity`).
+
+Résultats (détail et réserves dans le rapport) : PC, GC 242,6 → 224,9 Mo, 424 → 74 Instantiate,
+score 895 → 815 assumé (bombes explosées ne restent plus figées). Quest (72 Hz, casque porté),
+GC −25 % par coupe, 0 Destroy en jeu, mémoire stable après pré-allocation des stocks.
+
+Chemins :
+- Rapport : `docs/part2/rapport/rapport.pdf` (source `rapport.tex`, 8 pages).
+- Mesures PC : `docs/part2/mesures-avant/`, `docs/part2/mesures-apres/` (comparatif-pc.csv).
+- Mesures Quest : `docs/part2/mesures-avant-quest/`, `docs/part2/mesures-apres-quest/`
+  (comparatif-quest.csv, logs VrApi et variantes).
+- Graphiques Profiler (mesures ProfilerRecorder, pas des captures d'écran) :
+  `docs/part2/captures-profiler/`.
+- Builds de référence : `Builds/Bench/avant/` et `Builds/Bench/apres/` (APK Quest dev + Windows dev).
+- Dossier de remise : `Builds/Remise-Part2/` (rapport.pdf, APK Quest après corrigé, ZIP Windows après).
+- Tag de remise : [`part2-remise`](https://github.com/Ethervel/FruitNinjaVR/releases/tag/part2-remise).
