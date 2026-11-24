@@ -1,0 +1,7 @@
+Quest AVANT (72 Hz, build dev)
+Frames : 4275
+CPU moyen : 13.927 ms (écrêté à 60 ms pour le graphique)
+GC alloc total : 5.73 Mo ; max/frame : 591.3 ko
+PNG : haut = GC Allocated In Frame (ko, orange >100 ko), bas = CPU Main Thread (ms),
+lignes rouges = 13,9 ms (72 fps) et 16,7 ms (60 fps). Fond : bleu = partie, vert = menu.
+Source : ProfilerRecorder du build (frames.csv), PAS une capture d'écran du Profiler.

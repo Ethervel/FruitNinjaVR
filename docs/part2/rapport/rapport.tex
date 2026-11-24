@@ -1,4 +1,4 @@
-% Fruit Ninja VR - Part 2 - Rapport BROUILLON (session casque à faire)
+% Fruit Ninja VR - Part 2 - Rapport (session casque du 25/11 : mesures Quest faites)
 % Compilation : pdflatex x2
 \documentclass[11pt,a4paper]{article}
 
@@ -40,7 +40,7 @@
 
 \pagestyle{fancy}
 \fancyhf{}
-\lhead{\small Fruit Ninja VR -- Part 2 (brouillon)}
+\lhead{\small Fruit Ninja VR -- Part 2}
 \rhead{\small Junghoon KIM -- ST2VAAS 2026-2027}
 \cfoot{\small \thepage}
 
@@ -54,11 +54,16 @@
   {\small Unity 6000.0.56f1 -- URP 17.0.4 -- Addressables 2.10.3 -- OpenXR 1.15.1}
 \end{center}
 
-\begin{afaire}[Version brouillon --- session casque à faire]
-Toutes les mesures et tous les tests Quest (et le test PCVR via Link) sont regroupés en
-UNE session casque à venir, décrite dans \fichier{docs/part2/session-casque.md}. Les cases
-Quest de ce rapport sont volontairement VIDES : aucun chiffre n'est inventé. Les mesures
-PC sont réelles et reproductibles (bench déterministe, section~\ref{sec:mesures}).
+\begin{afaire}[État de la session casque (25/11) --- lire avant les tableaux]
+Mesures Quest avant/après \textbf{faites} au casque (Quest 3 porté, 72~Hz, bench déterministe
+seed 12345). Deux réserves honnêtes : (1) le scénario Quest n'est \emph{pas} identique au PC
+ni entre runs (physique à 72~fps vs $\sim$2500~fps : 13--37 coupes/partie au lieu de 34) ;
+la comparaison avant/après est normalisée par coupe et par minute. (2) Les captures sont des
+\textbf{graphiques des mesures} \texttt{ProfilerRecorder} (CPU/GC par frame), pas des captures
+d'écran de la fenêtre Profiler : la connexion Profiler$\rightarrow$Quest n'a pas pu être
+faite (éditeur non ouvert pendant les runs) et \texttt{screencap} est bloqué sur Quest 3.
+Le test visuel utilisateur est \emph{partiel} (logs de jeu vérifiés, confirmation OK/KO en
+attente) ; le test PCVR via Link n'a pas été fait. Aucun chiffre n'est inventé.
 \end{afaire}
 
 % =====================================================================
@@ -266,20 +271,68 @@ Lecture honnête des écarts :
       casque (IL2CPP, mémoire plus contrainte).
 \end{itemize}
 
-\begin{afaire}[Session casque à faire --- mesures Quest]
+\subsection{Mesures Quest (casque porté, 72 Hz)}
+
+Quest 3, Android 14 (vOS 205), APK Development + Autoconnect Profiler, bench seed 12345,
+3 parties + 2 retours menu. \textbf{Scénario non identique entre runs} : à 72~fps les fruits
+passent moins de temps au-dessus du seuil de coupe du bench et les 3 vies se perdent plus
+tôt ; le run avant fait 51 coupes / 70,7~s, le run après 75 coupes / 77,4~s. Les indicateurs
+bruts ne sont donc pas comparables tels quels : les lignes normalisées (par coupe, par
+minute) sont la comparaison équitable. Pic système d'une frame à 10,7~s (run avant,
+événement OS Quest, absent des runs 1--2) exclu des moyennes, documenté.
+
+\begin{table}[H]
+\centering\small
+\caption{Comparatif Quest avant/après (runs de référence ; $\dagger$ = normalisé).}
 \begin{tabularx}{\textwidth}{@{}L P{2.6cm} P{2.6cm}@{}}
 \toprule
 Indicateur & Avant (Quest) & Après (Quest) \\
 \midrule
-CPU moyen / p95 (ms) & & \\
-Allocations GC totales (Mo) & & \\
-Collectes GC & & \\
-Mémoire utilisée début $\rightarrow$ fin (Mo) & & \\
-Score / partie (contrôle) & & \\
+Frames / durée (s) & 4275 / 70,7 & 5541 / 77,4 \\
+Coupes totales (3 parties) & 51 & 75 \\
+CPU moyen / p95 (ms) & 13,95 / 14,57 & 13,91 / 14,38 \\
+CPU p99 / max hors pic (ms) & 15,06 / 213 & 14,83 / 303 \\
+Alloc GC moyenne (ko/frame) & 1,37 & \textbf{1,17} \\
+Alloc GC par coupe$^\dagger$ (ko) & 115,0 & \textbf{86,8} ($-25$~\%) \\
+Alloc GC par minute$^\dagger$ (Mo) & 4,86 & 4,93 \\
+Collectes GC (total / par minute$^\dagger$) & 28 / 23,8 & 38 / 29,4 \\
+\texttt{Instantiate} réels & à la demande (57 fruits) & \textbf{74} (= stocks) \\
+Réutilisations de pools & 0 & \textbf{322} \\
+\texttt{Destroy} en jeu & oui (57 fruits, 102 morceaux) & \textbf{0} \\
+Mémoire utilisée fin (Mo, CSV) & 845,0 & 893,8 ($+50$ = stocks) \\
+VrApi FPS / App / CPU\&GPU (ms) & 72/72 ; 8,62 ; 13,31 & 72/72 ; 8,87 ; \textbf{12,44} \\
 \bottomrule
 \end{tabularx}
-Captures du Profiler (CPU + Memory, avant et après) : à insérer après la session casque.
-\end{afaire}
+\end{table}
+
+Lecture : le gain du pooling est net sur les allocations \emph{par action de jeu}
+($-25$~\% de GC par coupe) et sur les \texttt{Instantiate}/\texttt{Destroy} (74 créations
+initiales = stocks, 322 réutilisations, 0 destruction en jeu). Le CPU moyen est stable
+($\sim$13,9~ms, dominé par le rendu à 72~Hz) ; le temps CPU\&GPU VrApi baisse légèrement
+(13,31 $\rightarrow$ 12,44~ms). La mémoire augmente de $\sim$50~Mo : c'est la
+\emph{pré-allocation} des stocks au démarrage, pas une fuite --- la croissance est quasi
+nulle ensuite (+0,5~Mo sur les 2000 dernières frames) et tous les pics d'utilisation
+restent sous les stocks. Les collectes GC par minute augmentent légèrement (29,4 vs 23,8)
+car le run après est plus actif (75 coupes vs 51) ; le coût par coupe baisse.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{../captures-profiler/quest-avant-profiler-synthese.png}\\[4pt]
+\includegraphics[width=\textwidth]{../captures-profiler/quest-apres-profiler-synthese.png}
+\caption{Graphiques des mesures \texttt{ProfilerRecorder} (Quest avant / après).
+Haut : GC Allocated In Frame (ko ; orange $>$100~ko). Bas : CPU Main Thread (ms ;
+lignes rouges = 13,9~ms / 72~fps et 16,7~ms / 60~fps ; écrêté à 60~ms). Fond : bleu =
+partie, vert = menu. \emph{Ce ne sont pas des captures d'écran de la fenêtre Profiler}
+(connexion Profiler$\rightarrow$Quest non faite ; cf. limites).}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{../captures-profiler/playmode-apres-profiler-synthese.png}
+\caption{Repli documenté : même graphique pour le bench « après » en Play Mode editor
+sur PC (sans casque, 3 parties de 34 coupes / score 815, identique au build Windows).
+Sert de référence « captures Profiler » côté PC ; ne remplace pas une capture au casque.}
+\end{figure}
 
 % =====================================================================
 \section{Tests}
@@ -299,19 +352,31 @@ Captures du Profiler (CPU + Memory, avant et après) : à insérer après la ses
       l'APK (vérifié dans \texttt{StreamingAssets/aa/}).
 \end{itemize}
 
-\subsection{À faire en session casque (une seule session)}
+\subsection{Session casque (25/11) : fait et vérifié}
 
-Checklist complète et commandes : \fichier{docs/part2/session-casque.md}.
 \begin{itemize}
-\item Installer l'APK « avant », bench 3 parties, récupérer CSV/JSON + captures Profiler.
-\item Installer l'APK « après », idem ; vérifier les compteurs de pools et le score.
-\item Test de jeu rapide Quest : variante Quest des FX et du katana, découpe, 3 parties
-      d'affilée sans état résiduel ni ralentissement.
-\item Test PCVR via Link : variante PCVR des FX et du katana, 2 parties + retour menu.
+\item APK « avant » installé, bench 3 parties $\times$ 3 runs (runs interrompus par la
+      veille du casque écartés), CSV/JSON récupérés : \fichier{docs/part2/mesures-avant-quest/}.
+\item APK « après » \textbf{corrigé pendant la session} (cf. infra), bench 3 parties,
+      CSV/JSON + logs variantes : \fichier{docs/part2/mesures-apres-quest/}.
+      Logs vérifiés : \texttt{[KatanaVariant] Variante 'Katana\_Quest' appliquée à 2
+      sabre(s) (132 sommets)}, \texttt{fallback=False handles=3}, \texttt{[GameFX]
+      variante utilisée : Quest}.
+\item Jeu libre Quest (utilisateur, casque porté) : 31 coupes réelles au katana
+      (vitesses 1,1--2,6~m/s), 2 parties (Difficile puis Normal), touches de bombe
+      journalisées (1/3, 2/3), retour menu. \emph{Partiel} : 3e partie et explosion
+      complète 3/3 non observées dans les logs (casque reposé avant la fin).
+\item Extras d'intent Android \textbf{confirmés} au casque (\texttt{-e bench 1} sur
+      \texttt{UnityPlayerGameActivity}) ; pas besoin du secours \texttt{bench.flag}.
 \end{itemize}
 
-\begin{afaire}[Session casque à faire --- tests visuels]
-Résultats des cases ci-dessus et captures d'écran Quest/PCVR : à insérer.
+\begin{afaire}[Tests visuels --- confirmation utilisateur en attente]
+Vérifié par logs (variante Quest des FX et du katana, découpe fonctionnelle, bombes
+touchées, retour menu). \textbf{Reste à confirmer par l'utilisateur} : jus à la couleur
+du fruit à chaque coupe ; explosion complète (shake + flash) à la 3e touche ; 3 parties
+d'affilée sans fruit fantôme ni ralentissement ; test PCVR via Link (variante PCVR des
+FX, katana détaillé) \textbf{non fait}. Captures d'écran Quest impossibles via adb
+(\texttt{screencap} bloqué sur Quest 3, fichier 0 octet).
 \end{afaire}
 
 % =====================================================================
@@ -320,8 +385,32 @@ Résultats des cases ci-dessus et captures d'écran Quest/PCVR : à insérer.
 \begin{itemize}
 \item \textbf{Extras Android} : les extras \texttt{am start -e unity \ldots} n'arrivent pas
       dans \texttt{GetCommandLineArgs()} ; le bench lit les extras d'intent via
-      \texttt{UnityPlayer.currentActivity}, avec un fichier déclencheur en secours. La
-      méthode sera confirmée au branchement du casque.
+      \texttt{UnityPlayer.currentActivity}. \emph{Confirmé au casque} ; l'activité est
+      \texttt{UnityPlayerGameActivity} (Unity 6 GameActivity), pas \texttt{UnityPlayerActivity}.
+\item \textbf{Défaut trouvé et corrigé en session casque} : le groupe Addressables
+      \texttt{FX\_Quest} était sérialisé avec 2 entrées au lieu de 3 (l'entrée Katana
+      avait disparu après \texttt{CreateOrMoveEntry}, sans erreur journalisée) ; le
+      catalogue Quest ne contenait pas le katana $\rightarrow$ échec
+      \texttt{ChainOperation failed} au casque et repli sur \texttt{Katana\_PCVR}
+      (mesh détaillé sur Quest). \texttt{AddressablesSetup} vérifie désormais la
+      sérialisation de chaque entrée après sauvegarde (re-création + échec bruyant) ;
+      contenu Quest et APK rebuilds, catalogue vérifié, \texttt{Katana\_Quest} appliqué
+      au casque (132 sommets). L'APK défectueux est archivé (scratch).
+\item \textbf{Veille du Quest} : le capteur de proximité endort l'app dès que le casque
+      est posé ; un run interrompu produit des parties tronquées (scores faux).
+      \texttt{svc power stayon true} et le timeout Android n'y changent rien : le casque
+      doit être \emph{porté} pendant le bench. Les runs interrompus sont écartés.
+\item \textbf{Scénario Quest $\neq$ PC} : à 72~fps, les fruits montent moins haut entre
+      deux frames et passent moins de temps au-dessus du seuil de coupe ($y \ge 0{,}3$) ;
+      les parties se terminent sur les 3 vies perdues. 13--37 coupes/partie selon les
+      runs (vs 34 sur PC à $\sim$2500~fps). La comparaison avant/après Quest est
+      normalisée par coupe/minute ; la comparaison Quest vs PC ne l'est pas.
+\item \textbf{Captures Profiler} : la connexion Profiler$\rightarrow$Quest n'a pas pu
+      être faite (éditeur Unity non ouvert pendant les runs Quest) ;
+      \texttt{adb screencap} produit un fichier vide sur Quest 3 (restriction Meta).
+      Les figures sont des \emph{graphiques des mesures} \texttt{ProfilerRecorder}
+      (CPU/GC par frame) + un run Play Mode editor sur PC en repli. Ce ne sont pas des
+      captures d'écran de la fenêtre Profiler, et c'est dit explicitement.
 \item \textbf{État résiduel des bombes} : le pooling a révélé que l'« avant » laissait les
       bombes explosées figées dans la scène (le bench les re-touchait gratuitement) ;
       la correction change le score de référence (895 $\rightarrow$ 815), assumée et
@@ -337,8 +426,10 @@ Résultats des cases ci-dessus et captures d'écran Quest/PCVR : à insérer.
       \texttt{-nographics} et la simulation ; les gains du pooling sur le thread de rendu
       et la mémoire GPU ne sont mesurables qu'au casque. Le scénario ne couvre pas les
       difficultés Hard/Extreme (stocks dimensionnés pour Normal, croissance possible).
-\item \textbf{Mesures Quest} : aucune n'a été faite à ce stade ; toutes les cases Quest
-      sont vides et aucun chiffre n'est inventé.
+\item \textbf{Mesures Quest} : faites (avant $\times 3$ runs, après $\times 1$ run de
+      référence) ; un seul run après valide (casque porté) --- la reproductibilité
+      inter-runs n'a pas pu être vérifiée côté après (veille du casque). Le test PCVR
+      via Link et la fin du test visuel Quest restent à faire par l'utilisateur.
 \end{itemize}
 
 \end{document}

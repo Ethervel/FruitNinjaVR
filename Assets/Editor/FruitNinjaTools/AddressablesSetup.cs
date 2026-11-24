@@ -61,6 +61,35 @@ namespace FruitNinjaTools
             // Par défaut : profil PCVR actif (le build Quest repositionne via SetPlatform).
             SetPlatform("PCVR");
             AssetDatabase.SaveAssets();
+
+            // Vérification : chaque entrée doit être SÉRIALISÉE dans son groupe après sauvegarde.
+            // (Session casque : l'entrée Katana de FX_Quest avait disparu du groupe sérialisé alors
+            // que CreateOrMoveEntry l'avait acceptée — catalogue Quest sans katana, repli PCVR au
+            // runtime. On re-crée l'entrée manquante et on échoue bruyamment si elle ne tient pas.)
+            AssetDatabase.Refresh();
+            foreach (var e in Entries)
+            {
+                string guid = AssetDatabase.AssetPathToGUID(e.path);
+                var group = e.group == "FX_PCVR" ? pc : quest;
+                var entry = settings.FindAssetEntry(guid);
+                if (entry == null || entry.parentGroup != group)
+                {
+                    Debug.LogWarning($"[AddressablesSetup] Entrée {e.group}/{e.address} absente après sauvegarde, re-création.");
+                    entry = settings.CreateOrMoveEntry(guid, group, false, false);
+                    entry.address = e.address;
+                    entry.SetLabel(e.label, true, true);
+                    entry.SetLabel(e.group, true, true);
+                    EditorUtility.SetDirty(group);
+                    AssetDatabase.SaveAssets();
+                    entry = settings.FindAssetEntry(guid);
+                }
+                if (entry == null || entry.parentGroup != group)
+                {
+                    Debug.LogError($"[AddressablesSetup] ÉCHEC : {e.group}/{e.address} ({e.path}) refuse de rester dans le groupe.");
+                    EditorApplication.Exit(1);
+                    return;
+                }
+            }
             Debug.Log($"[AddressablesSetup] Groupes : {string.Join(", ", settings.groups.Select(g => g.name))} ; " +
                       $"entrées : {string.Join(", ", Entries.Select(e => e.group + "/" + e.address))}");
         }

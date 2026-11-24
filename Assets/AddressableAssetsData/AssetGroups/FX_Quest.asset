@@ -15,6 +15,13 @@ MonoBehaviour:
   m_GroupName: FX_Quest
   m_GUID: 20e9afc301c6182438dc7b38c79f342c
   m_SerializeEntries:
+  - m_GUID: bb155b4bc10645d4381f580d623087a4
+    m_Address: Katana
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - FX_Quest
+    - katana
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c80987e27d3020d44b1d2e8f1050062c
     m_Address: FX_BombExplosion
     m_ReadOnly: 0

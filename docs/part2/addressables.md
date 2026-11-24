@@ -74,3 +74,21 @@ Paquet : `com.unity.addressables` **2.10.3** (compatible Unity 6000.0.56f1).
 - Application : `KatanaVariantApplier` remplace mesh/matériaux/MeshCollider des sabres
   de la scène par la variante chargée (le GameObject du sabre, référencé par le rig XR,
   n'est pas remplacé). Sur PC la variante PCVR = visuel identique à la Part 1.
+
+## Incident session casque (25/11) : entrée Katana perdue du groupe FX_Quest
+
+L'APK « après » initial (commit 472aa1c) contenait un catalogue Quest **sans l'entrée
+Katana** : le groupe `FX_Quest` était sérialisé avec 2 entrées au lieu de 3, alors que
+`AddressablesSetup.Run` avait bien appelé `CreateOrMoveEntry` pour les 6 entrées (log
+« entrées : … FX_Quest/Katana »). Cause exacte non identifiée (pas d'erreur journalisée ;
+l'entrée a disparu entre le setup et la sérialisation du groupe). Conséquence au casque :
+`OperationException : ChainOperation failed` sur 'Katana' → repli sur `Katana_PCVR`
+(mesh détaillé 1275 sommets sur Quest).
+
+**Correction** : `AddressablesSetup.Run` vérifie après `SaveAssets` que chaque entrée est
+sérialisée dans son groupe (`FindAssetEntry` + `parentGroup`) ; si absente, re-création +
+nouvelle sauvegarde ; si toujours absente, échec bruyant (`Exit(1)`). Contenu Quest et APK
+rebuilds (0 erreur), catalogue vérifié (`Katana_Quest.prefab` présent), et au casque :
+`[KatanaVariant] Variante 'Katana_Quest' appliquée à 2 sabre(s) (132 sommets)`,
+`fallback=False handles=3`. L'APK défectueux est archivé dans le scratch
+(`FruitNinjaVR_apres_bench_SANS_KATANA.apk.bak`).

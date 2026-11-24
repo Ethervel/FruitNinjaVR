@@ -16,7 +16,7 @@ Variables : `P=com.JunghoonKIM.FruitNinjaVR`, dossier de collecte `docs/part2/me
 adb install -r Builds/Bench/avant/FruitNinjaVR_avant_bench.apk
 adb shell am force-stop com.JunghoonKIM.FruitNinjaVR
 adb logcat -c
-adb shell am start -n com.JunghoonKIM.FruitNinjaVR/com.unity3d.player.UnityPlayerActivity -e bench 1
+adb shell am start -n com.JunghoonKIM.FruitNinjaVR/com.unity3d.player.UnityPlayerGameActivity -e bench 1
 adb logcat -s Unity   # vérifier "[Bench] START seed=12345" ; sinon : bench.flag (protocole-casque.md)
 ```
 
@@ -40,7 +40,7 @@ adb exec-out screencap -p > docs/part2/mesures-quest/avant/ecran.png   # si l'ap
 ```bash
 adb install -r Builds/Bench/apres/FruitNinjaVR_apres_bench.apk
 adb shell am force-stop com.JunghoonKIM.FruitNinjaVR
-adb shell am start -n com.JunghoonKIM.FruitNinjaVR/com.unity3d.player.UnityPlayerActivity -e bench 1
+adb shell am start -n com.JunghoonKIM.FruitNinjaVR/com.unity3d.player.UnityPlayerGameActivity -e bench 1
 ```
 
 - Mêmes captures Profiler → `mesures-quest/apres/`, mêmes `run-as cat` → `mesures-quest/apres/`.
@@ -52,7 +52,7 @@ adb shell am start -n com.JunghoonKIM.FruitNinjaVR/com.unity3d.player.UnityPlaye
 Relancer sans extra bench (supprimer `bench.flag` s'il a été créé) :
 
 ```bash
-adb shell am start -n com.JunghoonKIM.FruitNinjaVR/com.unity3d.player.UnityPlayerActivity
+adb shell am start -n com.JunghoonKIM.FruitNinjaVR/com.unity3d.player.UnityPlayerGameActivity
 ```
 
 Checklist visuelle (2–3 parties, difficulté Normal puis Hard) :

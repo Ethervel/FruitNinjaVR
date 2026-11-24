@@ -27,7 +27,7 @@ branche `UNITY_ANDROID`) lit les extras de l'intent via `UnityPlayer.currentActi
 ```bash
 adb install -r Builds/Bench/avant/FruitNinjaVR_avant_bench.apk
 adb shell am force-stop com.JunghoonKIM.FruitNinjaVR
-adb shell am start -n com.JunghoonKIM.FruitNinjaVR/com.unity3d.player.UnityPlayerActivity -e bench 1
+adb shell am start -n com.JunghoonKIM.FruitNinjaVR/com.unity3d.player.UnityPlayerGameActivity -e bench 1
 ```
 
 Extras reconnus (tous facultatifs, défauts identiques au PC) :
@@ -38,7 +38,7 @@ Méthode de secours si les extras ne passent pas (fichier déclencheur lu au dé
 
 ```bash
 adb shell "run-as com.JunghoonKIM.FruitNinjaVR sh -c 'echo 1 > files/bench.flag'"
-adb shell am start -n com.JunghoonKIM.FruitNinjaVR/com.unity3d.player.UnityPlayerActivity
+adb shell am start -n com.JunghoonKIM.FruitNinjaVR/com.unity3d.player.UnityPlayerGameActivity
 # après la mesure, supprimer le déclencheur pour rejouer normalement :
 adb shell "run-as com.JunghoonKIM.FruitNinjaVR rm files/bench.flag"
 ```

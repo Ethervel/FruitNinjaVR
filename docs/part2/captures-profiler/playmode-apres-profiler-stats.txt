@@ -1,0 +1,7 @@
+Play Mode editor APRES (PC, sans casque)
+Frames : 577639
+CPU moyen : 0.167 ms (écrêté à 60 ms pour le graphique)
+GC alloc total : 563.78 Mo ; max/frame : 10631.9 ko
+PNG : haut = GC Allocated In Frame (ko, orange >100 ko), bas = CPU Main Thread (ms),
+lignes rouges = 13,9 ms (72 fps) et 16,7 ms (60 fps). Fond : bleu = partie, vert = menu.
+Source : ProfilerRecorder du build (frames.csv), PAS une capture d'écran du Profiler.

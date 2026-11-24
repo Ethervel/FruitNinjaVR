@@ -1,0 +1,5 @@
+11-25 02:31:47.956 30664 30695 I Unity   : [AssetLoader] Préchargement Addressables (Quest)
+11-25 02:31:48.148 30664 30695 I Unity   : [KatanaVariant] Variante 'Katana_Quest' appliquée à 2 sabre(s) (mesh 'Katana_Quest', 132 sommets, 1 matériau(x)).
+11-25 02:31:48.148 30664 30695 I Unity   : KatanaVariantApplier:Apply(GameObject)
+11-25 02:31:48.149 30664 30695 I Unity   : [AssetLoader] Préchargement terminé. fallback=False handles=3
+11-25 02:31:48.161 30664 30695 I Unity   : [GameFX] variante utilisée : Quest (jus=FX_FruitJuice_Quest, explosion=FX_BombExplosion_Quest) pools : jus 8, explosion 4
