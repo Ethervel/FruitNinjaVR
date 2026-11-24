@@ -197,11 +197,24 @@ public class GameManager : MonoBehaviour
 
     private void CleanupObjects()
     {
-        var fruits = FindObjectsByType<FruitController>(FindObjectsSortMode.None);
-        foreach (var f in fruits) if (f != null) Destroy(f.gameObject);
+        // Pooling (Part 2, Task 1) : retour au stock des instances ACTIVES seulement
+        // (FindObjectsInactive.Exclude : le stock désactivé n'est pas touché).
+        var fruits = FindObjectsByType<FruitController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        foreach (var f in fruits) if (f != null) Retire(f.gameObject);
 
-        var bombs = FindObjectsByType<BombController>(FindObjectsSortMode.None);
-        foreach (var b in bombs) if (b != null) Destroy(b.gameObject);
+        var bombs = FindObjectsByType<BombController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        foreach (var b in bombs) if (b != null) Retire(b.gameObject);
+
+        // Morceaux de fruits découpés (Task 2)
+        var pieces = FindObjectsByType<SlicedPiece>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        foreach (var p in pieces) if (p != null) Retire(p.gameObject);
+    }
+
+    static void Retire(GameObject go)
+    {
+        var po = go.GetComponent<PooledObject>();
+        if (po != null) po.ReturnToPool();
+        else Destroy(go);
     }
 
     private void AddScore(int points)

@@ -22,6 +22,42 @@ public class Slicer : MonoBehaviour
     [Tooltip("Tolérance géométrique pour la détection d'intersections avec le plan")]
     public float epsilon = 1e-5f;
 
+    // -------------------- pooling des morceaux (Part 2, Task 2) --------------------
+    // Pool de GameObjects « morceau » (template créé une fois) + RÉUTILISATION des Mesh :
+    // chaque morceau garde son Mesh, réécrit à chaque coupe (Clear + SetVertices...),
+    // au lieu d'un new Mesh + new GameObject ×2 par coupe. La découpe est inchangée.
+    // Matériau de cap : un cache PAR COULEUR (les couleurs viennent d'une palette fixe
+    // de fruits) au lieu d'un new Material par coupe.
+    GameObject pieceTemplate;
+    GameObjectPool piecePool;
+    readonly Dictionary<Color, Material> capMaterialCache = new Dictionary<Color, Material>();
+    [Tooltip("Stock initial de morceaux. Justification : ~2,9 coupes/s × 2 morceaux × ~2,5 s de chute ≈ 15 morceaux vivants (mesures avant : pic 16) ; 24 couvre les rafales.")]
+    public int piecePoolStock = 24;
+
+    void EnsurePiecePool()
+    {
+        if (piecePool != null) return;
+        if (pieceTemplate == null)
+        {
+            pieceTemplate = new GameObject("SlicedPieceTemplate");
+            pieceTemplate.AddComponent<MeshFilter>();
+            pieceTemplate.AddComponent<MeshRenderer>();
+            pieceTemplate.AddComponent<SlicedPiece>();
+            pieceTemplate.SetActive(false);
+        }
+        piecePool = gameObject.AddComponent<GameObjectPool>();
+        piecePool.Init(pieceTemplate, piecePoolStock);
+    }
+
+    void OnDestroy()
+    {
+        // Destruction finale (fin de scène) : instances, template, matériaux de cap.
+        if (piecePool != null) piecePool.DestroyAll();
+        if (pieceTemplate != null) Destroy(pieceTemplate);
+        foreach (var m in capMaterialCache.Values) if (m != null) Destroy(m);
+        capMaterialCache.Clear();
+    }
+
     // -------------------- structs internes --------------------
     private struct VertexData
     {
@@ -255,7 +291,24 @@ public class Slicer : MonoBehaviour
 
         if (sliceA.transform.childCount == 0) { Destroy(sliceA); sliceA = null; }
         if (sliceB.transform.childCount == 0) { Destroy(sliceB); sliceB = null; }
-        Destroy(parent);
+        ReturnSource(parent);
+    }
+
+    // Pooling (Part 2, Task 1) : le fruit source RENTRE AU POOL au lieu d'être détruit.
+    // Ses données de jeu seront réinitialisées à sa prochaine réactivation (OnEnable).
+    void ReturnSource(GameObject go)
+    {
+        var po = go.GetComponent<PooledObject>();
+        if (po != null)
+        {
+            var spawner = FindFirstObjectByType<FruitSpawner>();
+            if (spawner != null) spawner.NotifySliced(go);
+            po.ReturnToPool();
+        }
+        else
+        {
+            Destroy(go);
+        }
     }
 
     // -------------------- cœur de découpe --------------------
@@ -319,7 +372,7 @@ public class Slicer : MonoBehaviour
         SetupSlicedPhysics(sliceA, go, planeNormal);
         SetupSlicedPhysics(sliceB, go, -planeNormal);
 
-        Destroy(go);
+        ReturnSource(go);
     }
 
     private void AddTriangleAligned(List<Triangle> dst, Triangle t, Vector3 referenceNormal)
@@ -561,17 +614,45 @@ public class Slicer : MonoBehaviour
     {
         if ((surface == null || surface.Count == 0) && (caps == null || caps.Count == 0)) return null;
 
-        GameObject go = new GameObject(name);
-        go.tag = original.tag;
-        go.layer = original.layer;
+        // Pooling (Part 2, Task 2) : instance réutilisée ; le Mesh existant est réécrit plus bas.
+        EnsurePiecePool();
+        GameObject go = piecePool.Get(original.transform.position, original.transform.rotation);
+        MeshFilter mf;
+        MeshRenderer mr;
+        if (go != null)
+        {
+            go.name = name;
+            go.tag = original.tag;
+            go.layer = original.layer;
+            go.transform.localScale = original.transform.localScale;
+            mf = go.GetComponent<MeshFilter>();
+            mr = go.GetComponent<MeshRenderer>();
+        }
+        else
+        {
+            // Plafond du pool atteint (ne devrait pas arriver) : chemin historique.
+            go = new GameObject(name);
+            go.tag = original.tag;
+            go.layer = original.layer;
+            go.transform.SetPositionAndRotation(original.transform.position, original.transform.rotation);
+            go.transform.localScale = original.transform.localScale;
+            mf = go.AddComponent<MeshFilter>();
+            mr = go.AddComponent<MeshRenderer>();
+            go.AddComponent<SlicedPiece>();
+        }
 
-        go.transform.SetPositionAndRotation(original.transform.position, original.transform.rotation);
-        go.transform.localScale = original.transform.localScale;
-
-        var mf = go.AddComponent<MeshFilter>();
-        var mr = go.AddComponent<MeshRenderer>();
-
-        Mesh mesh = new Mesh { indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+        Mesh mesh = mf.sharedMesh;
+        bool reuseMesh = mesh != null && mesh.name == "SlicedPieceMesh";
+        if (reuseMesh)
+        {
+            mesh.Clear(); // réutilisation du même Mesh (pas de nouvelle allocation GPU)
+        }
+        else
+        {
+            mesh = new Mesh();
+            mesh.name = "SlicedPieceMesh";
+        }
+        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
 
         List<Vector3> vertices = new List<Vector3>();
         List<Vector3> normals = new List<Vector3>();
@@ -620,14 +701,21 @@ public class Slicer : MonoBehaviour
     // -------------------- matériau cap --------------------
     private Material MakeCapMaterial(Color? capColor, Material fruitMat)
     {
+        // ⭐ FORCER la couleur calculée du fruit - ignorer capMaterial de l'inspecteur
+        Color finalColor = capColor ?? Color.gray;
+
+        // Pooling (Part 2, Task 2) : cache PAR COULEUR — les couleurs de cap viennent d'une
+        // palette fixe (couleurs des fruits), donc quelques matériaux partagés au lieu d'un
+        // new Material par coupe. Détruits uniquement à la fin (OnDestroy du Slicer).
+        if (capMaterialCache.TryGetValue(finalColor, out var cached) && cached != null)
+            return cached;
+
         // Shader prioritaire URP Unlit
         Shader sh = Shader.Find("Universal Render Pipeline/Unlit");
         if (sh == null) sh = Shader.Find("Unlit/Color");
         if (sh == null) sh = Shader.Find("Standard");
         Material m = new Material(sh);
-
-        // ⭐ FORCER la couleur calculée du fruit - ignorer capMaterial de l'inspecteur
-        Color finalColor = capColor ?? Color.gray;
+        capMaterialCache[finalColor] = m;
 
         // Appliquer la couleur
         if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", finalColor);
@@ -652,34 +740,49 @@ public class Slicer : MonoBehaviour
     {
         if (slice == null) return;
 
-        var oldMc = slice.GetComponent<MeshCollider>();
-        if (oldMc != null) DestroyImmediate(oldMc);
+        // Pooling (Part 2) : les composants physique sont RÉUTILISÉS, plus d'AddComponent
+        // par coupe. Un seul collider primitif actif par morceau, reconfiguré selon la forme.
+        var sphere = slice.GetComponent<SphereCollider>();
+        if (sphere == null) sphere = slice.AddComponent<SphereCollider>();
+        var capsule = slice.GetComponent<CapsuleCollider>();
+        if (capsule == null) capsule = slice.AddComponent<CapsuleCollider>();
+        var box = slice.GetComponent<BoxCollider>();
+        if (box == null) box = slice.AddComponent<BoxCollider>();
 
-        AddOptimalCollider(slice);
+        Collider active = ConfigureOptimalCollider(slice, sphere, capsule, box);
+        sphere.enabled = active == sphere;
+        capsule.enabled = active == capsule;
+        box.enabled = active == box;
 
-        var rb = slice.AddComponent<Rigidbody>();
+        var rb = slice.GetComponent<Rigidbody>();
+        if (rb == null) rb = slice.AddComponent<Rigidbody>();
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.isKinematic = false;
+        rb.constraints = RigidbodyConstraints.None;
         rb.useGravity = true;
-        
+        rb.mass = slicedMass;
+
         // UTILISATION DES NOUVELLES VARIABLES POUR UN MOUVEMENT DOUX
         rb.AddForce(forceDirection.normalized * sliceForce, ForceMode.Impulse);
         rb.AddTorque(Random.insideUnitSphere * sliceTorque, ForceMode.Impulse);
-        rb.mass = slicedMass;
     }
 
-    private Collider AddOptimalCollider(GameObject slice)
+    private Collider ConfigureOptimalCollider(GameObject slice, SphereCollider sphere, CapsuleCollider capsule, BoxCollider box)
     {
         var mf = slice.GetComponent<MeshFilter>();
-        if (mf == null || mf.sharedMesh == null) return slice.AddComponent<SphereCollider>();
+        if (mf == null || mf.sharedMesh == null)
+        { sphere.center = Vector3.zero; sphere.radius = 0.1f; return sphere; }
 
         Bounds b = mf.sharedMesh.bounds;
         Vector3 size = b.size;
 
         if (Mathf.Abs(size.x - size.y) < 0.1f && Mathf.Abs(size.x - size.z) < 0.1f)
-        { var s = slice.AddComponent<SphereCollider>(); s.center = b.center; s.radius = Mathf.Max(size.x, size.y, size.z) * 0.5f; return s; }
+        { sphere.center = b.center; sphere.radius = Mathf.Max(size.x, size.y, size.z) * 0.5f; return sphere; }
         else if (size.y > size.x * 1.5f && size.y > size.z * 1.5f)
-        { var c = slice.AddComponent<CapsuleCollider>(); c.center = b.center; c.height = size.y; c.radius = Mathf.Max(size.x, size.z) * 0.5f; c.direction = 1; return c; }
+        { capsule.center = b.center; capsule.height = size.y; capsule.radius = Mathf.Max(size.x, size.z) * 0.5f; capsule.direction = 1; return capsule; }
         else
-        { var bx = slice.AddComponent<BoxCollider>(); bx.center = b.center; bx.size = size; return bx; }
+        { box.center = b.center; box.size = size; return box; }
     }
     
 }
