@@ -1,0 +1,344 @@
+% Fruit Ninja VR - Part 2 - Rapport BROUILLON (session casque à faire)
+% Compilation : pdflatex x2
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[french]{babel}
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage[most]{tcolorbox}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{fancyhdr}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{nosep,leftmargin=*}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+\setlength{\parindent}{0pt}
+\renewcommand{\arraystretch}{1.15}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcommand{\fichier}[1]{\texttt{\small #1}}
+\emergencystretch=2em
+% Autorise les césures après / et - dans les chemins \texttt (sinon débordements).
+\makeatletter
+\renewcommand{\texttt}[1]{%
+  {\ttfamily\hyphenchar\font=`\/ \hyphenpenalty=50 \exhyphenpenalty=50 #1}}
+\makeatother
+
+\definecolor{afaire}{RGB}{200,90,0}
+\newtcolorbox{afaire}[1][]{colback=orange!8,colframe=afaire,fonttitle=\bfseries,
+  title={#1},boxrule=0.8pt,arc=2pt,left=6pt,right=6pt}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small Fruit Ninja VR -- Part 2 (brouillon)}
+\rhead{\small Junghoon KIM -- ST2VAAS 2026-2027}
+\cfoot{\small \thepage}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries Fruit Ninja VR -- Part 2}\\[4pt]
+  {\Large Gestion des ressources et optimisation mémoire}\\[10pt]
+  ST2VAAS 2026-2027 \quad--\quad Junghoon KIM\\[4pt]
+  Dépôt : \url{https://github.com/Ethervel/FruitNinjaVR}, branche \texttt{part2}\\[2pt]
+  {\small Unity 6000.0.56f1 -- URP 17.0.4 -- Addressables 2.10.3 -- OpenXR 1.15.1}
+\end{center}
+
+\begin{afaire}[Version brouillon --- session casque à faire]
+Toutes les mesures et tous les tests Quest (et le test PCVR via Link) sont regroupés en
+UNE session casque à venir, décrite dans \fichier{docs/part2/session-casque.md}. Les cases
+Quest de ce rapport sont volontairement VIDES : aucun chiffre n'est inventé. Les mesures
+PC sont réelles et reproductibles (bench déterministe, section~\ref{sec:mesures}).
+\end{afaire}
+
+% =====================================================================
+\section{Objectif et méthode}
+
+La Part 1 livrait un jeu fonctionnel sur PC VR et Quest, mais chaque fruit, bombe, effet
+et morceau de fruit était instancié puis détruit pendant la partie : environ 424
+\texttt{Instantiate}/\texttt{Destroy} sur le scénario de référence, 242,6~Mo d'allocations
+GC et 145 collectes. La Part 2 réduit ce coût par trois moyens : pooling des objets de
+jeu (Task~1), pooling des effets et des morceaux avec réutilisation des meshes (Task~2),
+chargement Addressables du contenu variable par plateforme (Tasks~3 et~4).
+
+La comparaison avant/après s'appuie sur un \textbf{mode bench déterministe}
+(\fichier{Assets/Scripts/Debug/}\allowbreak\fichier{BenchMode.cs}) : graine 12345, difficulté Normal, coupes
+simulées toutes les 0,35~s de temps de jeu par le même chemin de code que le sabre, une
+bombe touchée jusqu'à explosion après 15~s, 3 parties séparées par 2 retours au menu.
+Le mode est activé par \texttt{-bench} sur PC et par extra d'intent (\texttt{am start
+\ldots{} -e bench 1}) sur Quest. Il écrit \texttt{bench-summary.json}, \texttt{frames.csv}
+(une ligne par frame : CPU, allocations, mémoire, instances actives) et \texttt{summary.csv}.
+Les deux builds de référence (« avant » = Part~1 + bench, « après » = état final) sont
+archivés dans \fichier{Builds/Bench/avant|apres/}, en Development + Autoconnect Profiler.
+
+% =====================================================================
+\section{Task 1 --- Pools fruits et bombes, réinitialisations}
+
+\subsection{Organisation}
+
+Un pool \textbf{par prefab} (\fichier{GameObjectPool.cs}, \fichier{PoolManager.cs}) :
+8 fruits ordinaires, le fruit bonus et la bombe ont chacun leur stock ; une instance ne
+change jamais de type en cours de vie. Les stocks initiaux sont justifiés par les pics
+mesurés sur l'état « avant » :
+
+\begin{table}[H]
+\centering\small
+\caption{Stocks initiaux et pics observés au bench (3 parties).}
+\begin{tabularx}{\textwidth}{@{}P{3.4cm}P{2cm}P{2.6cm}L@{}}
+\toprule
+Pool & Stock & Pic d'usage & Justification \\
+\midrule
+Chaque fruit ordinaire ($\times 8$) & 4 & 1--2 & pic global 3 fruits vivants, réparti sur 8 variétés ; 4 couvre les rafales \\
+Fruit bonus & 2 & 1 & 7~\% des spawns \\
+Bombe & 4 & 2 & $\approx 10$~\% des spawns, durée de vie longue (10~s + explosion) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Au bench « après » : \textbf{42 créations} (= les stocks, aucune croissance), 111
+réutilisations pour les fruits/bonus/bombes, aucun \texttt{Destroy} en jeu. Les pools
+peuvent croître si une difficulté plus rapide l'exige (\texttt{maxSize} = 0 par défaut).
+
+\subsection{Réinitialisation complète à la réactivation}
+
+La remise à zéro a lieu au \texttt{Get} (réactivation), pas au retour : l'objet désactivé
+conserve son dernier état pour le debug, et rien de l'usage précédent ne fuit vers le suivant.
+
+\begin{itemize}
+\item \textbf{Transform} : position/rotation demandées, échelle du prefab restaurée.
+\item \textbf{Physique} : vitesses linéaire et angulaire à zéro, \texttt{isKinematic} et
+      contraintes remis à l'état neuf, \texttt{Sleep()} ; la coroutine de gravité
+      personnalisée du spawner est neutralisée au retour (génération + \texttt{InUse}).
+\item \textbf{Colliders} : état restauré depuis le prefab (un morceau n'a qu'un collider
+      actif sur trois) ; réactivés pour les fruits/bombes.
+\item \textbf{Apparence} : renderers réactivés, systèmes de particules stoppés et vidés.
+\item \textbf{Données de jeu} (via \texttt{OnEnable}) : \texttt{wasSliced} remis à faux ;
+      bombe : compteur de touches, état d'explosion, flash (alpha 0, quad caché) ;
+      durée de vie : le timeout 10~s (\fichier{PooledLifetime.cs}) est réarmé à chaque
+      activation et rendu caduc à la désactivation (compteur de génération).
+\end{itemize}
+
+\subsection{Retours au pool et gardes d'unicité}
+
+Tous les \texttt{Destroy} de gameplay sont devenus des retours au pool : coupe
+(\texttt{Slicer}), sol (\texttt{DestroyFloor}), chute sous $y=-2$ et nettoyage de fin de
+partie (\texttt{FruitSpawner}, \texttt{GameManager}), timeout 10~s, et bombe après son
+explosion (au lieu de rester figée dans la scène). La \textbf{destruction finale} n'a lieu
+qu'à l'arrêt / au déchargement de la scène (\texttt{DestroyAll}, quad et matériau de flash
+de la bombe détruits explicitement).
+
+Deux gardes protègent le score : \texttt{FruitController.TryMarkSliced} est partagée par
+les \emph{deux} sabres (un fruit touché par les deux = un seul score ; le
+\texttt{HashSet} local de chaque sabre ne couvrait que lui-même et une seule frame) ;
+\texttt{BombController.StartExplosionSequence} refuse une seconde séquence (une bombe =
+une pénalité d'explosion). Le bench vérifie 3 parties sans état résiduel : 34 coupes,
+3 touches, 1 explosion par partie, identiques sur les 3 parties.
+
+% =====================================================================
+\section{Task 2 --- Pools d'effets et morceaux, meshes réutilisés}
+
+\textbf{FX} (\fichier{GameFX.cs}) : un pool par variante (jus : 8, explosions : 4 ;
+justifiés par les pics mesurés : 5 jus simultanés au bench, 3 effets par bombe).
+À la sortie du pool : \texttt{Stop(StopEmittingAndClear)} + \texttt{Clear(true)} puis
+\texttt{Play(true)} --- aucune particule de l'usage précédent. Le retour au pool est
+programmé à la fin de l'effet (\texttt{FXReturn}, durée + 0,5~s), en remplacement de
+\texttt{Destroy(fx, délai)}. Au bench : 8 + 4 créations, 102 + 6 réutilisations.
+
+\textbf{Morceaux de fruits} (\fichier{Slicer.cs}, \fichier{SlicedPiece.cs}) : pool de 24
+GameObjects créés depuis un template (pic mesuré : 6 au bench, $\approx 15$ estimés en
+jeu réel). Stratégie mesh : chaque morceau \emph{garde son Mesh}, réécrit à chaque coupe
+(\texttt{Clear()} puis \texttt{SetVertices/SetNormals/SetUVs/SetTriangles}) au lieu d'un
+\texttt{new Mesh} --- l'allocation GPU est réutilisée, la géométrie de découpe (plan,
+caps, triangulation) est \textbf{inchangée}. Les composants physique sont réutilisés
+(Rigidbody + un collider primitif actif reconfiguré selon la forme, plus
+d'\texttt{AddComponent} par coupe) et les matériaux de cap sont mis en cache par couleur
+(palette fixe de fruits). Au bench : 24 créations / 204 réutilisations / 204 retours,
+contre 204 créations = 204 destructions avant.
+
+% =====================================================================
+\section{Tasks 3 et 4 --- Addressables et prefab supplémentaire}
+
+\subsection{Groupes et cycle de vie}
+
+Paquet \texttt{com.unity.addressables} 2.10.3. Deux groupes, \texttt{FX\_PCVR} (Windows)
+et \texttt{FX\_Quest} (Android), avec les \emph{mêmes adresses} (\texttt{FX\_FruitJuice},
+\texttt{FX\_BombExplosion}, \texttt{Katana}) et des labels (\texttt{fx}, \texttt{katana},
+nom du groupe). Chaque groupe n'est inclus que dans le build de sa plateforme
+(\texttt{IncludeInBuild} piloté par \texttt{AddressablesSetup.SetPlatform}), avec des
+profils de chemins distincts (\texttt{aa/PCVR/}, \texttt{aa/Quest/}). La détection de
+plateforme se fait donc au build ; le code charge les mêmes clés partout.
+
+Cycle de vie (\fichier{AssetLoader.cs}) : \texttt{LoadAssetAsync} \emph{avant} la première
+partie (le bench attend \texttt{IsReady}) ; les pools FX sont alimentés par les assets
+chargés ; le \textbf{handle est gardé} tant que des clones existent (ils référencent
+mesh/matériaux du bundle) ; à l'arrêt, les instances sont détruites \emph{puis} les handles
+libérés (libération différée d'une frame pour garantir l'ordre). En cas d'échec :
+journalisation, libération du handle raté, \textbf{repli sur références directes} (le jeu
+reste jouable). Le contenu est généré pour Windows \emph{et} Android.
+
+\textbf{Test d'échec} (simulé sur PC, \texttt{-benchFailAssets}) : les trois chargements
+échouent (\texttt{InvalidKeyException}), le repli prend le relais, le bench complète ses
+3 parties avec le même score. Détail et logs : \fichier{docs/part2/}\allowbreak
+\fichier{addressables.md} et \fichier{docs/part2/mesures-apres/}\allowbreak\fichier{echec-assets/}.
+
+\subsection{Katana : deux variantes}
+
+\begin{table}[H]
+\centering\small
+\caption{Variantes du katana, chargées par Addressables selon la plateforme.}
+\begin{tabularx}{\textwidth}{@{}P{2.2cm}P{3.4cm}P{3.2cm}L@{}}
+\toprule
+ & PCVR & Quest & \\
+\midrule
+Mesh & 1275 sommets / 851 triangles (FBX d'origine) & 132 sommets / 260 triangles ($\approx 31$~\%), asset 14~ko & decimation editor (clustering 1,5~\%, triangles dégénérés supprimés, normales recalculées) \\
+Matériaux & matériaux d'origine du modèle (7 slots) & 1 matériau URP Simple Lit \emph{sans texture} & une passe de shading, pas de maps \\
+Application & visuel identique à la Part 1 & \texttt{KatanaVariant\allowbreak Applier} remplace mesh, matériaux et collider des sabres & le GameObject du sabre (rig XR) n'est pas remplacé \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Contenu du build $\neq$ contenu chargé en mémoire}
+
+Le \emph{contenu du build} est ce qui est livré : les bundles de la plateforme active, le
+catalogue, et les assets référencés directement par les scènes (fruits, bombes, décor,
+replis). L'autre variante n'est pas dans le build. Le \emph{contenu chargé en mémoire} est
+ce qui réside à l'exécution : un bundle sur le disque ne coûte rien tant qu'il n'est pas
+chargé ; \texttt{LoadAssetAsync} le charge et le handle le maintient en mémoire ; les
+clones des pools ne dupliquent pas les meshes (ils les référencent) ; \texttt{Release}
+décharge quand plus aucun clone n'en dépend. La taille du build dépend donc des groupes
+inclus, la mémoire des handles actifs et des stocks préchauffés.
+
+% =====================================================================
+\section{Protocole et mesures}\label{sec:mesures}
+
+Machine : i9-14900KF, RTX 3080, 32~Go, Windows 11 ; Unity 6000.0.56f1 ; builds Development
++ Deep Profiling ; \texttt{-batchmode -nographics} sans casque. Instrumentation
+\texttt{ProfilerRecorder} dans le build (CPU thread principal, allocations GC par frame,
+mémoire utilisée/réservée), une ligne par frame dans \texttt{frames.csv}. Protocoles
+détaillés : \fichier{docs/part2/mesures-avant/}\allowbreak\fichier{protocole.md},
+\fichier{docs/part2/mesures-apres/}\allowbreak\fichier{protocole.md}.
+
+\begin{table}[H]
+\centering\small
+\caption{Comparatif PC avant/après (3 parties, même seed, même séquence).}
+\begin{tabularx}{\textwidth}{@{}L P{2.6cm} P{2.6cm}@{}}
+\toprule
+Indicateur & Avant & Après \\
+\midrule
+CPU moyen (ms) & 0,39 & 0,37 \\
+CPU p95 / p99 (ms) & 0,55 / 0,70 & \textbf{0,44 / 0,56} \\
+CPU max (ms, pic de chargement) & 42,3 & 43,9 \\
+Allocations GC totales (Mo) & 242,6 & \textbf{224,9} \\
+Alloc moyenne (ko/frame) & 1,02 & 0,90 \\
+Collectes GC gen0 & 145 & \textbf{134} \\
+Mémoire utilisée fin de bench (Mo) & 110,9 & \textbf{103,8} \\
+\texttt{Instantiate} réels sur le scénario & 424 & \textbf{74} (= stocks) \\
+Réutilisations de pools & 0 & \textbf{423} \\
+\texttt{Destroy} en jeu & 424 & \textbf{0} \\
+Fruits coupés / partie (contrôle) & 34 & 34 \\
+Score / partie (contrôle, $\times 3$) & 895 & 815 (cf. infra) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Lecture honnête des écarts :
+\begin{itemize}
+\item \textbf{Score 895 $\rightarrow$ 815} : les bombes explosées ne restent plus figées
+      dans la scène ; le bench re-touche alors une nouvelle bombe (pénalités
+      supplémentaires). C'est le comportement correct face à un joueur réel ; l'« avant »
+      profitait d'un état résiduel. Fruits coupés et séquence de spawn identiques.
+\item \textbf{CPU max 43,9~ms et pic d'allocation 243,3~ko/frame} : chargement Addressables
+      au démarrage (une seule fois, phase \texttt{loading}), pas une régression en jeu ;
+      p95/p99 en baisse.
+\item Le CPU moyen est quasi stable (0,39 $\rightarrow$ 0,37~ms) : le bench sans casque
+      est dominé par le rendu et la simulation, pas par les allocations ; le gain
+      attendu est surtout visible sur la mémoire et les collectes, et à vérifier au
+      casque (IL2CPP, mémoire plus contrainte).
+\end{itemize}
+
+\begin{afaire}[Session casque à faire --- mesures Quest]
+\begin{tabularx}{\textwidth}{@{}L P{2.6cm} P{2.6cm}@{}}
+\toprule
+Indicateur & Avant (Quest) & Après (Quest) \\
+\midrule
+CPU moyen / p95 (ms) & & \\
+Allocations GC totales (Mo) & & \\
+Collectes GC & & \\
+Mémoire utilisée début $\rightarrow$ fin (Mo) & & \\
+Score / partie (contrôle) & & \\
+\bottomrule
+\end{tabularx}
+Captures du Profiler (CPU + Memory, avant et après) : à insérer après la session casque.
+\end{afaire}
+
+% =====================================================================
+\section{Tests}
+
+\subsection{Faits et vérifiés (sans casque)}
+
+\begin{itemize}
+\item Compilation : 0 erreur à chaque étape ; audit projet inchangé (1 script manquant
+      préexistant dans une scène de test hors build, 1 shader non URP sur un \texttt{.dae}
+      source hors build).
+\item Builds Windows Development à chaque étape ; APK Quest Development avant/après
+      (IL2CPP + ARM64 + OpenXR, 0 erreur, 75,4 / 76,4~Mo).
+\item Bench PC 3 parties : mêmes 34 coupes / 3 touches / 1 explosion par partie, aucun
+      état résiduel ; compteurs de pools cohérents (créations = stocks, pics $\le$ stocks).
+\item Test d'échec Addressables : repli fonctionnel, même score (section 4).
+\item Contenu Addressables : bundles PCVR seuls dans le build Windows, Quest seuls dans
+      l'APK (vérifié dans \texttt{StreamingAssets/aa/}).
+\end{itemize}
+
+\subsection{À faire en session casque (une seule session)}
+
+Checklist complète et commandes : \fichier{docs/part2/session-casque.md}.
+\begin{itemize}
+\item Installer l'APK « avant », bench 3 parties, récupérer CSV/JSON + captures Profiler.
+\item Installer l'APK « après », idem ; vérifier les compteurs de pools et le score.
+\item Test de jeu rapide Quest : variante Quest des FX et du katana, découpe, 3 parties
+      d'affilée sans état résiduel ni ralentissement.
+\item Test PCVR via Link : variante PCVR des FX et du katana, 2 parties + retour menu.
+\end{itemize}
+
+\begin{afaire}[Session casque à faire --- tests visuels]
+Résultats des cases ci-dessus et captures d'écran Quest/PCVR : à insérer.
+\end{afaire}
+
+% =====================================================================
+\section{Difficultés et limites}
+
+\begin{itemize}
+\item \textbf{Extras Android} : les extras \texttt{am start -e unity \ldots} n'arrivent pas
+      dans \texttt{GetCommandLineArgs()} ; le bench lit les extras d'intent via
+      \texttt{UnityPlayer.currentActivity}, avec un fichier déclencheur en secours. La
+      méthode sera confirmée au branchement du casque.
+\item \textbf{État résiduel des bombes} : le pooling a révélé que l'« avant » laissait les
+      bombes explosées figées dans la scène (le bench les re-touchait gratuitement) ;
+      la correction change le score de référence (895 $\rightarrow$ 815), assumée et
+      documentée plutôt que masquée.
+\item \textbf{Quad de flash de la bombe} : parenté à la caméra, il survivait au retour au
+      pool ; réutilisé entre explosions (un seul matériau instancié par bombe) et détruit
+      explicitement à la destruction finale.
+\item \textbf{Decimation du katana} : faite par clustering editor (pas d'outil externe) ;
+      le maillage simplifié n'a pas de correspondance de sommets exacte avec l'original,
+      acceptable pour une arme vue en main. Le \texttt{MeshCollider} trigger du sabre est
+      réassigné au mesh simplifié (la découpe utilise le plan de coupe, pas le mesh).
+\item \textbf{Limites du bench} : sans casque, le CPU est dominé par le rendu
+      \texttt{-nographics} et la simulation ; les gains du pooling sur le thread de rendu
+      et la mémoire GPU ne sont mesurables qu'au casque. Le scénario ne couvre pas les
+      difficultés Hard/Extreme (stocks dimensionnés pour Normal, croissance possible).
+\item \textbf{Mesures Quest} : aucune n'a été faite à ce stade ; toutes les cases Quest
+      sont vides et aucun chiffre n'est inventé.
+\end{itemize}
+
+\end{document}
